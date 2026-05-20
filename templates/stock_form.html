@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Adjust Stock: {{ product.name }}</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">{{ form.adjust_type.label(class="form-label") }}{{ form.adjust_type(class="form-select") }}</div>
+    <div class="mb-3">{{ form.quantity.label(class="form-label") }}{{ form.quantity(class="form-control") }}</div>
+    {{ form.submit(class="btn btn-primary") }}
+    <a href="{{ url_for('inventory') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

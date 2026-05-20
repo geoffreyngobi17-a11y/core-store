@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Audit Log</h2>
+<table class="table table-sm table-hover">
+    <thead><tr><th>User</th><th>Action</th><th>Details</th><th>Timestamp</th></tr></thead>
+    <tbody>
+        {% for log in logs %}
+        <tr><td>{{ log.user.name if log.user else 'System' }}</td><td>{{ log.action }}</td><td>{{ log.details }}</td><td>{{ log.timestamp }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

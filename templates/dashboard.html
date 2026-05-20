@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Total Items in Stock</h5>
+                <p class="card-text display-6">{{ total_products }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Total Stock Value (UGX)</h5>
+                <p class="card-text display-6">{{ "{:,.0f}".format(total_value) }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Low Stock Alerts</h5>
+                <p class="card-text display-6">{{ low_stock }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Repair Services Offered</h5>
+                <p class="card-text display-6">{{ total_services }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+<h4 class="mt-5">Recent Activity</h4>
+<table class="table table-striped">
+    <thead><tr><th>User</th><th>Action</th><th>Details</th><th>Time</th></tr></thead>
+    <tbody>
+        {% for log in recent_logs %}
+        <tr><td>{{ log.user.name if log.user else 'System' }}</td><td>{{ log.action }}</td><td>{{ log.details }}</td><td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
