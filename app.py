@@ -305,8 +305,13 @@ def backup_trigger():
         app.logger.error(f"Backup error: {e}")
         return "Internal error", 500
 
-# Create admin user inside app context (replaces deprecated before_first_request)
+# Create database tables and admin user on startup
 with app.app_context():
+    # This line will create all the tables defined in models.py
+    db.create_all()
+    print("Tables created (or already exist).")
+
+    # Now, check for and create the admin user
     if not User.query.filter_by(role='admin').first():
         admin = User(
             name='Admin',
@@ -318,7 +323,8 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created: admin@coreelectronics.com / Admin123!")
-
+    else:
+        print("Admin user already exists.")
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
