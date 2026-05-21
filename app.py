@@ -160,6 +160,11 @@ def adjust_stock(id):
         flash('Stock updated.', 'success')
         return redirect(url_for('inventory'))
     return render_template('stock_form.html', form=form, product=product)
+class ChangePasswordForm(FlaskForm):
+    current_password = PasswordField('Current Password', validators=[DataRequired()])
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password')])
+    submit = SubmitField('Change Password')
 
 @app.route('/inventory/delete/<int:id>')
 @admin_required
