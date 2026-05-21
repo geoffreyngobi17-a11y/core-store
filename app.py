@@ -331,5 +331,22 @@ with app.app_context():
     else:
         print("Admin user already exists.")
 if __name__ == '__main__':
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    from forms import ChangePasswordForm
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+        # Verify current password
+        if not current_user.check_password(form.current_password.data):
+            flash('Current password is incorrect.', 'danger')
+            return redirect(url_for('change_password'))
+        # Update to new password
+        current_user.set_password(form.new_password.data)
+        db.session.commit()
+        flash('Your password has been updated. Please log in again.', 'success')
+        logout_user()
+        return redirect(url_for('login'))
+    return render_template('change_password.html', form=form)
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
