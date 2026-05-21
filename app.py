@@ -352,7 +352,9 @@ with app.app_context():
         admin.set_password('Admin123!')
         db.session.add(admin)
         db.session.commit()
-        print("Admin user created.")
+        print("Admin user created: admin@coreelectronics.com / Admin123!")
+    else:
+        print("Admin user already exists.")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
