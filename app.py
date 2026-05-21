@@ -16,14 +16,6 @@ from forms import LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjust
 from backup_utils import backup_database_to_drive
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db.init_app(app)
-migrate = Migrate(app, db)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
 
 def admin_required(f):
     @wraps(f)
