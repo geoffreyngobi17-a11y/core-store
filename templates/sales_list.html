@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Sales Records</h2>
+<a href="{{ url_for('add_sale') }}" class="btn btn-success mb-3">+ New Sale</a>
+<table class="table table-striped">
+    <thead class="table-dark">
+        <tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Customer</th><th>Sold By</th></tr>
+    </thead>
+    <tbody>
+        {% for sale in sales %}
+        <tr>
+            <td>{{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ sale.item_name }}</td>
+            <td>{{ sale.item_type }}</td>
+            <td>{{ sale.quantity }}</td>
+            <td>{{ "{:,.0f}".format(sale.unit_price) }}</td>
+            <td><strong>{{ "{:,.0f}".format(sale.total_price) }}</strong></td>
+            <td>{{ sale.customer_name or '-' }}</td>
+            <td>{{ sale.seller.name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot class="table-secondary">
+        <tr><td colspan="5"><strong>Total Revenue</strong></td>
+            <td><strong>{{ "{:,.0f}".format(sales|sum(attribute='total_price')) }}</strong></td>
+            <td colspan="2"></td>
+        </tr>
+    </tfoot>
+</table>
+{% endblock %}

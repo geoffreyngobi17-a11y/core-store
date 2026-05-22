@@ -8,7 +8,7 @@ from sqlalchemy import func, desc
 from dotenv import load_dotenv
 
 load_dotenv()
-from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice
+from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice, Sale
 from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm,
                    ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm)
 from backup_utils import backup_database_to_drive
@@ -427,6 +427,69 @@ def create_tables():
         new_tables = inspector.get_table_names()
         created = set(new_tables) - set(existing_tables)
         return f"Tables created: {created}<br>All tables now: {new_tables}"
+@app.route('/sales')
+@login_required
+def sales_list():
+    all_sales = Sale.query.order_by(Sale.sale_date.desc()).all()
+    return render_template('sales_list.html', sales=all_sales)
+
+@app.route('/sales/add', methods=['GET','POST'])
+@login_required
+def add_sale():
+    form = SaleForm()
+    # Populate product choices
+    form.product_id.choices = [(p.id, f"{p.name} (UGX {p.unit_price}) - Stock: {p.quantity}") for p in Product.query.all()]
+    form.product_id.choices.insert(0, (0, '-- Select Product --'))
+    # Populate service choices
+    form.service_id.choices = [(s.id, f"{s.name} (UGX {s.price})") for s in Service.query.all()]
+    form.service_id.choices.insert(0, (0, '-- Select Service --'))
+    
+    if form.validate_on_submit():
+        if form.item_type.data == 'product':
+            product = Product.query.get(form.product_id.data)
+            if not product:
+                flash('Product not found.', 'danger')
+                return redirect(url_for('add_sale'))
+            if product.quantity < form.quantity.data:
+                flash(f'Not enough stock. Only {product.quantity} available.', 'danger')
+                return redirect(url_for('add_sale'))
+            # Reduce stock
+            product.quantity -= form.quantity.data
+            db.session.commit()
+            total = product.unit_price * form.quantity.data
+            sale = Sale(
+                item_type='product',
+                item_id=product.id,
+                item_name=product.name,
+                quantity=form.quantity.data,
+                unit_price=product.unit_price,
+                total_price=total,
+                customer_name=form.customer_name.data,
+                sold_by=current_user.id,
+                notes=form.notes.data
+            )
+        else:  # service
+            service = Service.query.get(form.service_id.data)
+            if not service:
+                flash('Service not found.', 'danger')
+                return redirect(url_for('add_sale'))
+            total = service.price * form.quantity.data
+            sale = Sale(
+                item_type='service',
+                item_id=service.id,
+                item_name=service.name,
+                quantity=form.quantity.data,
+                unit_price=service.price,
+                total_price=total,
+                customer_name=form.customer_name.data,
+                sold_by=current_user.id,
+                notes=form.notes.data
+            )
+        db.session.add(sale)
+        db.session.commit()
+        flash('Sale recorded successfully.', 'success')
+        return redirect(url_for('sales_list'))
+    return render_template('sale_form.html', form=form)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

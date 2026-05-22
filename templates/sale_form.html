@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Record Sale</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">{{ form.item_type.label }}{{ form.item_type(class="form-select", id="item_type") }}</div>
+    <div class="mb-3" id="product_div">{{ form.product_id.label }}{{ form.product_id(class="form-select") }}</div>
+    <div class="mb-3" id="service_div" style="display:none">{{ form.service_id.label }}{{ form.service_id(class="form-select") }}</div>
+    <div class="mb-3">{{ form.quantity.label }}{{ form.quantity(class="form-control") }}</div>
+    <div class="mb-3">{{ form.customer_name.label }}{{ form.customer_name(class="form-control") }}</div>
+    <div class="mb-3">{{ form.notes.label }}{{ form.notes(class="form-control") }}</div>
+    {{ form.submit(class="btn btn-success") }}
+</form>
+<script>
+    const typeSelect = document.getElementById('item_type');
+    const productDiv = document.getElementById('product_div');
+    const serviceDiv = document.getElementById('service_div');
+    typeSelect.addEventListener('change', function() {
+        if (this.value === 'product') {
+            productDiv.style.display = 'block';
+            serviceDiv.style.display = 'none';
+        } else {
+            productDiv.style.display = 'none';
+            serviceDiv.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}
