@@ -490,6 +490,20 @@ def add_sale():
         flash('Sale recorded successfully.', 'success')
         return redirect(url_for('sales_list'))
     return render_template('sale_form.html', form=form)
+@app.route('/fix-tables')
+def fix_tables():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        inspector = inspect(db.engine)
+        existing = set(inspector.get_table_names())
+        required = {'users', 'products', 'services', 'customers', 'repair_jobs', 'invoices', 'sales', 'audit_logs'}
+        missing = required - existing
+        db.create_all()  # creates all missing tables
+        # Also ensure foreign keys are correct (optional)
+        db.session.execute(text('ALTER TABLE repair_jobs DROP CONSTRAINT IF EXISTS repair_jobs_assigned_to_fkey;'))
+        db.session.execute(text('ALTER TABLE repair_jobs ADD FOREIGN KEY (assigned_to) REFERENCES users(id);'))
+        db.session.commit()
+        return f"Missing tables created: {missing}<br>All tables now: {inspector.get_table_names()}"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
