@@ -1,25 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Repair Jobs</h2>
-    <a href="{{ url_for('add_repair_job') }}" class="btn btn-success">+ New Job</a>
-</div>
-<table class="table table-hover table-bordered">
-    <thead class="table-dark">
-        <tr><th>ID</th><th>Customer</th><th>Device</th><th>Issue</th><th>Status</th><th>Technician</th><th>Actions</th></tr>
-    </thead>
-    <tbody>
-        {% for job in jobs %}
-        <tr class="{% if job.status == 'pending' %}table-warning{% elif job.status == 'in_progress' %}table-info{% endif %}">
-            <td>{{ job.id }}</td>
-            <td>{{ job.customer.name }}</td>
-            <td>{{ job.device_type }} {{ job.device_model }}</td>
-            <td>{{ job.issue_description[:50] }}{% if job.issue_description|length > 50 %}...{% endif %}</td>
-            <td>{{ job.status }}</td>
-            <td>{{ job.technician.name if job.technician else 'Unassigned' }}</td>
-            <td><a href="{{ url_for('repair_job_detail', id=job.id) }}" class="btn btn-sm btn-primary">View/Update</a></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="d-flex justify-content-between"><h2>Repair Jobs</h2><a href="{{ url_for('add_repair_job') }}" class="btn btn-success">+ New Job</a></div>
+<table class="table table-hover"><thead class="table-dark"><tr><th>ID</th><th>Customer</th><th>Device</th><th>Issue</th><th>Status</th><th>Technician</th><th>Actions</th></tr></thead><tbody>{% for job in jobs %}<tr class="{% if job.status == 'pending' %}table-warning{% elif job.status == 'in_progress' %}table-info{% endif %}"><td>{{ job.id }}</td><td>{{ job.customer.name }}</td><td>{{ job.device_type }} {{ job.device_model }}</td><td>{{ job.issue_description[:50] }}...</td><td>{{ job.status }}</td><td>{{ job.technician.name if job.technician else 'Unassigned' }}</td><td><a href="{{ url_for('repair_job_detail', id=job.id) }}" class="btn btn-sm btn-primary">View/Update</a></td></tr>{% endfor %}</tbody></table>
 {% endblock %}

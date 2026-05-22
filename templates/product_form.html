@@ -1,14 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>{{ title }}</h2>
-<form method="POST">
-    {{ form.hidden_tag() }}
-    <div class="mb-3">{{ form.name.label(class="form-label") }}{{ form.name(class="form-control") }}</div>
-    <div class="mb-3">{{ form.category.label(class="form-label") }}{{ form.category(class="form-control") }}</div>
-    <div class="mb-3">{{ form.quantity.label(class="form-label") }}{{ form.quantity(class="form-control") }}</div>
-    <div class="mb-3">{{ form.unit_price.label(class="form-label") }}{{ form.unit_price(class="form-control") }}</div>
-    <div class="mb-3">{{ form.low_stock_threshold.label(class="form-label") }}{{ form.low_stock_threshold(class="form-control") }}</div>
-    {{ form.submit(class="btn btn-primary") }}
-    <a href="{{ url_for('inventory') }}" class="btn btn-secondary">Cancel</a>
-</form>
+<form method="POST">{{ form.hidden_tag() }}{% for field in [form.name, form.category, form.quantity, form.unit_price, form.low_stock_threshold] %}<div class="mb-3">{{ field.label }}{{ field(class="form-control") }}</div>{% endfor %}{{ form.submit(class="btn btn-primary") }} <a href="{{ url_for('inventory') }}" class="btn btn-secondary">Cancel</a></form>
 {% endblock %}

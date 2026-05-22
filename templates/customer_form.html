@@ -1,13 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>{{ title }}</h2>
-<form method="POST">
-    {{ form.hidden_tag() }}
-    <div class="mb-3">{{ form.name.label(class="form-label") }}{{ form.name(class="form-control") }}</div>
-    <div class="mb-3">{{ form.phone.label(class="form-label") }}{{ form.phone(class="form-control") }}</div>
-    <div class="mb-3">{{ form.email.label(class="form-label") }}{{ form.email(class="form-control") }}</div>
-    <div class="mb-3">{{ form.address.label(class="form-label") }}{{ form.address(class="form-control") }}</div>
-    {{ form.submit(class="btn btn-primary") }}
-    <a href="{{ url_for('customers') }}" class="btn btn-secondary">Cancel</a>
-</form>
+<form method="POST">{{ form.hidden_tag() }}<div class="mb-3">{{ form.name.label }}{{ form.name(class="form-control") }}</div><div class="mb-3">{{ form.phone.label }}{{ form.phone(class="form-control") }}</div><div class="mb-3">{{ form.email.label }}{{ form.email(class="form-control") }}</div><div class="mb-3">{{ form.address.label }}{{ form.address(class="form-control") }}</div>{{ form.submit(class="btn btn-primary") }} <a href="{{ url_for('customers') }}" class="btn btn-secondary">Cancel</a></form>
 {% endblock %}
