@@ -416,6 +416,17 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created: admin@coreelectronics.com / Admin123!")
+# TEMPORARY ROUTE – Create missing tables (remove after use)
+@app.route('/create-tables')
+def create_tables():
+    from sqlalchemy import inspect
+    with app.app_context():
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        db.create_all()  # This creates any missing tables
+        new_tables = inspector.get_table_names()
+        created = set(new_tables) - set(existing_tables)
+        return f"Tables created: {created}<br>All tables now: {new_tables}"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
