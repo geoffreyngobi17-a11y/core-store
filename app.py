@@ -1,6 +1,8 @@
-import os, secrets
+import os
+import secrets
 from datetime import datetime
 from functools import wraps
+
 from flask import Flask, render_template, redirect, url_for, request, flash, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
@@ -8,9 +10,10 @@ from sqlalchemy import func, desc
 from dotenv import load_dotenv
 
 load_dotenv()
+
 from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice, Sale
 from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm,
-                   ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm)
+                   ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm, SaleForm)
 from backup_utils import backup_database_to_drive
 
 app = Flask(__name__)
@@ -43,7 +46,7 @@ def generate_invoice_number(job_id):
 def index():
     return redirect(url_for('login'))
 
-@app.route('/login', methods=['GET','POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
@@ -78,12 +81,16 @@ def dashboard():
     completed_today = RepairJob.query.filter(RepairJob.status=='completed', func.date(RepairJob.completion_date)==func.current_date()).count()
     recent_logs = AuditLog.query.order_by(desc(AuditLog.timestamp)).limit(10).all()
     return render_template('dashboard.html',
-                          total_products=total_products, total_value=total_value,
-                          low_stock=low_stock, total_services=total_services,
-                          pending_jobs=pending_jobs, in_progress_jobs=in_progress_jobs,
-                          completed_today=completed_today, recent_logs=recent_logs)
+                          total_products=total_products,
+                          total_value=total_value,
+                          low_stock=low_stock,
+                          total_services=total_services,
+                          pending_jobs=pending_jobs,
+                          in_progress_jobs=in_progress_jobs,
+                          completed_today=completed_today,
+                          recent_logs=recent_logs)
 
-@app.route('/change_password', methods=['GET','POST'])
+@app.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
     form = ChangePasswordForm()
@@ -98,13 +105,14 @@ def change_password():
         return redirect(url_for('login'))
     return render_template('change_password.html', form=form)
 
+# Inventory
 @app.route('/inventory')
 @login_required
 def inventory():
     products = Product.query.order_by(Product.name).all()
     return render_template('inventory.html', products=products)
 
-@app.route('/inventory/add', methods=['GET','POST'])
+@app.route('/inventory/add', methods=['GET', 'POST'])
 @login_required
 def add_product():
     if current_user.role != 'admin':
@@ -112,9 +120,13 @@ def add_product():
         return redirect(url_for('inventory'))
     form = ProductForm()
     if form.validate_on_submit():
-        product = Product(name=form.name.data, category=form.category.data,
-                          quantity=form.quantity.data, unit_price=form.unit_price.data,
-                          low_stock_threshold=form.low_stock_threshold.data)
+        product = Product(
+            name=form.name.data,
+            category=form.category.data,
+            quantity=form.quantity.data,
+            unit_price=form.unit_price.data,
+            low_stock_threshold=form.low_stock_threshold.data
+        )
         db.session.add(product)
         db.session.commit()
         db.session.add(AuditLog(user_id=current_user.id, action='Add Product', details=f'Added product: {product.name}'))
@@ -123,11 +135,11 @@ def add_product():
         return redirect(url_for('inventory'))
     return render_template('product_form.html', form=form, title='Add Product')
 
-@app.route('/inventory/edit/<int:id>', methods=['GET','POST'])
+@app.route('/inventory/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_product(id):
     product = Product.query.get_or_404(id)
-    if current_user.role not in ['admin','employee']:
+    if current_user.role not in ['admin', 'employee']:
         flash('Permission denied.', 'danger')
         return redirect(url_for('inventory'))
     form = ProductForm(obj=product)
@@ -143,7 +155,7 @@ def edit_product(id):
         return redirect(url_for('inventory'))
     return render_template('product_form.html', form=form, title='Edit Product')
 
-@app.route('/inventory/stock/<int:id>', methods=['GET','POST'])
+@app.route('/inventory/stock/<int:id>', methods=['GET', 'POST'])
 @login_required
 def adjust_stock(id):
     product = Product.query.get_or_404(id)
@@ -178,19 +190,24 @@ def delete_product(id):
     flash('Product deleted.', 'success')
     return redirect(url_for('inventory'))
 
+# Services
 @app.route('/services')
 @login_required
 def services():
     services = Service.query.order_by(Service.name).all()
     return render_template('services.html', services=services)
 
-@app.route('/services/add', methods=['GET','POST'])
+@app.route('/services/add', methods=['GET', 'POST'])
 @admin_required
 def add_service():
     form = ServiceForm()
     if form.validate_on_submit():
-        service = Service(name=form.name.data, description=form.description.data,
-                          price=form.price.data, estimated_days=form.estimated_days.data)
+        service = Service(
+            name=form.name.data,
+            description=form.description.data,
+            price=form.price.data,
+            estimated_days=form.estimated_days.data
+        )
         db.session.add(service)
         db.session.commit()
         db.session.add(AuditLog(user_id=current_user.id, action='Add Service', details=f'Added service: {service.name}'))
@@ -199,7 +216,7 @@ def add_service():
         return redirect(url_for('services'))
     return render_template('service_form.html', form=form, title='Add Service')
 
-@app.route('/services/edit/<int:id>', methods=['GET','POST'])
+@app.route('/services/edit/<int:id>', methods=['GET', 'POST'])
 @admin_required
 def edit_service(id):
     service = Service.query.get_or_404(id)
@@ -227,13 +244,14 @@ def delete_service(id):
     flash('Service deleted.', 'success')
     return redirect(url_for('services'))
 
+# Employees
 @app.route('/employees')
 @admin_required
 def employees():
     users = User.query.all()
     return render_template('employees.html', users=users)
 
-@app.route('/employees/add', methods=['GET','POST'])
+@app.route('/employees/add', methods=['GET', 'POST'])
 @admin_required
 def add_employee():
     form = EmployeeForm()
@@ -241,7 +259,12 @@ def add_employee():
         if User.query.filter_by(email=form.email.data).first():
             flash('Email already exists.', 'danger')
             return redirect(url_for('add_employee'))
-        user = User(name=form.name.data, email=form.email.data, phone=form.phone.data, role='employee')
+        user = User(
+            name=form.name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            role='employee'
+        )
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
@@ -268,24 +291,31 @@ def delete_employee(id):
     flash('Employee deleted.', 'success')
     return redirect(url_for('employees'))
 
+# Customers
 @app.route('/customers')
 @login_required
 def customers():
     all_customers = Customer.query.order_by(Customer.name).all()
     return render_template('customers.html', customers=all_customers)
 
-@app.route('/customers/add', methods=['GET','POST'])
+@app.route('/customers/add', methods=['GET', 'POST'])
 @login_required
 def add_customer():
     form = CustomerForm()
     if form.validate_on_submit():
-        customer = Customer(name=form.name.data, phone=form.phone.data, email=form.email.data, address=form.address.data)
+        customer = Customer(
+            name=form.name.data,
+            phone=form.phone.data,
+            email=form.email.data,
+            address=form.address.data
+        )
         db.session.add(customer)
         db.session.commit()
         flash('Customer added.', 'success')
         return redirect(url_for('customers'))
     return render_template('customer_form.html', form=form, title='Add Customer')
 
+# Repair Jobs
 @app.route('/repair_jobs')
 @login_required
 def repair_jobs():
@@ -295,17 +325,17 @@ def repair_jobs():
         jobs = RepairJob.query.order_by(RepairJob.received_date.desc()).all()
     return render_template('repair_jobs.html', jobs=jobs)
 
-@app.route('/repair_jobs/add', methods=['GET','POST'])
+@app.route('/repair_jobs/add', methods=['GET', 'POST'])
 @login_required
 def add_repair_job():
-    if current_user.role not in ['admin','employee']:
+    if current_user.role not in ['admin', 'employee']:
         flash('Permission denied.', 'danger')
         return redirect(url_for('repair_jobs'))
     form = RepairJobForm()
     form.customer_id.choices = [(c.id, f"{c.name} - {c.phone}") for c in Customer.query.all()]
     form.customer_id.choices.insert(0, (0, '-- Select Customer --'))
     form.service_id.choices = [(0, '-- None --')] + [(s.id, s.name) for s in Service.query.all()]
-    techs = User.query.filter(User.role.in_(['admin','technician'])).all()
+    techs = User.query.filter(User.role.in_(['admin', 'technician'])).all()
     form.assigned_to.choices = [(0, '-- Unassigned --')] + [(t.id, t.name) for t in techs]
     if form.validate_on_submit():
         job = RepairJob(
@@ -326,11 +356,11 @@ def add_repair_job():
         return redirect(url_for('repair_jobs'))
     return render_template('repair_job_form.html', form=form, title='New Repair Job')
 
-@app.route('/repair_jobs/<int:id>', methods=['GET','POST'])
+@app.route('/repair_jobs/<int:id>', methods=['GET', 'POST'])
 @login_required
 def repair_job_detail(id):
     job = RepairJob.query.get_or_404(id)
-    if current_user.role not in ['admin','employee'] and job.assigned_to != current_user.id:
+    if current_user.role not in ['admin', 'employee'] and job.assigned_to != current_user.id:
         flash('Access denied.', 'danger')
         return redirect(url_for('repair_jobs'))
     form = RepairJobUpdateForm()
@@ -349,8 +379,13 @@ def repair_job_detail(id):
         if job.status == 'completed' and old_status != 'completed':
             if not hasattr(job, 'invoice') or job.invoice is None:
                 total = job.final_cost if job.final_cost else (job.estimated_cost if job.estimated_cost else 0)
-                invoice = Invoice(repair_job_id=job.id, invoice_number=generate_invoice_number(job.id),
-                                  subtotal=total, total=total, paid=False)
+                invoice = Invoice(
+                    repair_job_id=job.id,
+                    invoice_number=generate_invoice_number(job.id),
+                    subtotal=total,
+                    total=total,
+                    paid=False
+                )
                 db.session.add(invoice)
                 db.session.commit()
                 flash('Invoice created for this repair.', 'success')
@@ -366,6 +401,7 @@ def repair_job_detail(id):
             form.completion_date.data = job.completion_date.strftime('%Y-%m-%d')
     return render_template('repair_job_detail.html', job=job, form=form)
 
+# Invoices
 @app.route('/invoices')
 @admin_required
 def invoices():
@@ -376,7 +412,7 @@ def invoices():
 @login_required
 def mark_invoice_paid(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
-    if current_user.role not in ['admin','employee']:
+    if current_user.role not in ['admin', 'employee']:
         abort(403)
     invoice.paid = True
     invoice.payment_date = datetime.utcnow()
@@ -386,64 +422,21 @@ def mark_invoice_paid(invoice_id):
     flash(f'Invoice {invoice.invoice_number} marked as paid.', 'success')
     return redirect(url_for('repair_job_detail', id=invoice.repair_job_id))
 
-@app.route('/auditlog')
-@admin_required
-def auditlog():
-    logs = AuditLog.query.order_by(desc(AuditLog.timestamp)).all()
-    return render_template('auditlog.html', logs=logs)
-
-@app.route('/admin/backup', methods=['POST'])
-@login_required
-def backup_trigger():
-    token = request.args.get('token')
-    if token != os.getenv('BACKUP_TOKEN'):
-        abort(403)
-    try:
-        result = backup_database_to_drive()
-        if result:
-            return "Backup successful", 200
-        else:
-            return "Backup failed", 500
-    except Exception as e:
-        app.logger.error(f"Backup error: {e}")
-        return "Internal error", 500
-
-with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(role='admin').first():
-        admin = User(name='Admin', email='admin@coreelectronics.com', phone='+256756104402', role='admin')
-        admin.set_password('Admin123!')
-        db.session.add(admin)
-        db.session.commit()
-        print("Admin user created: admin@coreelectronics.com / Admin123!")
-# TEMPORARY ROUTE – Create missing tables (remove after use)
-@app.route('/create-tables')
-def create_tables():
-    from sqlalchemy import inspect
-    with app.app_context():
-        inspector = inspect(db.engine)
-        existing_tables = inspector.get_table_names()
-        db.create_all()  # This creates any missing tables
-        new_tables = inspector.get_table_names()
-        created = set(new_tables) - set(existing_tables)
-        return f"Tables created: {created}<br>All tables now: {new_tables}"
+# Sales
 @app.route('/sales')
 @login_required
 def sales_list():
     all_sales = Sale.query.order_by(Sale.sale_date.desc()).all()
     return render_template('sales_list.html', sales=all_sales)
 
-@app.route('/sales/add', methods=['GET','POST'])
+@app.route('/sales/add', methods=['GET', 'POST'])
 @login_required
 def add_sale():
     form = SaleForm()
-    # Populate product choices
     form.product_id.choices = [(p.id, f"{p.name} (UGX {p.unit_price}) - Stock: {p.quantity}") for p in Product.query.all()]
     form.product_id.choices.insert(0, (0, '-- Select Product --'))
-    # Populate service choices
     form.service_id.choices = [(s.id, f"{s.name} (UGX {s.price})") for s in Service.query.all()]
     form.service_id.choices.insert(0, (0, '-- Select Service --'))
-    
     if form.validate_on_submit():
         if form.item_type.data == 'product':
             product = Product.query.get(form.product_id.data)
@@ -453,7 +446,6 @@ def add_sale():
             if product.quantity < form.quantity.data:
                 flash(f'Not enough stock. Only {product.quantity} available.', 'danger')
                 return redirect(url_for('add_sale'))
-            # Reduce stock
             product.quantity -= form.quantity.data
             db.session.commit()
             total = product.unit_price * form.quantity.data
@@ -468,7 +460,7 @@ def add_sale():
                 sold_by=current_user.id,
                 notes=form.notes.data
             )
-        else:  # service
+        else:
             service = Service.query.get(form.service_id.data)
             if not service:
                 flash('Service not found.', 'danger')
@@ -490,34 +482,33 @@ def add_sale():
         flash('Sale recorded successfully.', 'success')
         return redirect(url_for('sales_list'))
     return render_template('sale_form.html', form=form)
-@app.route('/fix-tables')
-def fix_tables():
-    from sqlalchemy import inspect, text
-    with app.app_context():
-        inspector = inspect(db.engine)
-        existing = set(inspector.get_table_names())
-        required = {'users', 'products', 'services', 'customers', 'repair_jobs', 'invoices', 'sales', 'audit_logs'}
-        missing = required - existing
-        db.create_all()  # creates all missing tables
-        # Also ensure foreign keys are correct (optional)
-        db.session.execute(text('ALTER TABLE repair_jobs DROP CONSTRAINT IF EXISTS repair_jobs_assigned_to_fkey;'))
-        db.session.execute(text('ALTER TABLE repair_jobs ADD FOREIGN KEY (assigned_to) REFERENCES users(id);'))
-        db.session.commit()
-        return f"Missing tables created: {missing}<br>All tables now: {inspector.get_table_names()}"
-@app.route('/fix-invoices')
-def fix_invoices():
-    with app.app_context():
-        # Drop the invoices table if it exists
-        from models import Invoice
-        db.session.execute("DROP TABLE IF EXISTS invoices CASCADE")
-        db.session.commit()
-        # Recreate all tables (or just invoices)
-        db.create_all()
-        return "Invoices table recreated. Go back and try again."
-@app.route('/rebuild-tables')
-def rebuild_tables():
-    from sqlalchemy import inspect
-  with app.app_context():
+
+# Audit Log
+@app.route('/auditlog')
+@admin_required
+def auditlog():
+    logs = AuditLog.query.order_by(desc(AuditLog.timestamp)).all()
+    return render_template('auditlog.html', logs=logs)
+
+# Backup
+@app.route('/admin/backup', methods=['POST'])
+@login_required
+def backup_trigger():
+    token = request.args.get('token')
+    if token != os.getenv('BACKUP_TOKEN'):
+        abort(403)
+    try:
+        result = backup_database_to_drive()
+        if result:
+            return "Backup successful", 200
+        else:
+            return "Backup failed", 500
+    except Exception as e:
+        app.logger.error(f"Backup error: {e}")
+        return "Internal error", 500
+
+# Create tables and admin user
+with app.app_context():
     db.create_all()
     if not User.query.filter_by(role='admin').first():
         admin = User(
@@ -530,8 +521,6 @@ def rebuild_tables():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
-    else:
-        print("Admin user already exists.")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
