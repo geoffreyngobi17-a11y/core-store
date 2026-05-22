@@ -7,14 +7,16 @@
         <p><strong>Phone:</strong> {{ job.customer.phone }}</p>
         <p><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}</p>
         <p><strong>Issue:</strong> {{ job.issue_description }}</p>
-        <p><strong>Status:</strong> {{ job.status }}</p>
-        <p><strong>Estimated Cost:</strong> {{ job.estimated_cost }}</p>
-        {% if job.final_cost %}<p><strong>Final Cost:</strong> {{ job.final_cost }}</p>{% endif %}
+        <p><strong>Status:</strong> <span class="badge bg-secondary">{{ job.status }}</span></p>
+        <p><strong>Estimated Cost:</strong> UGX {{ job.estimated_cost or 0 }}</p>
+        {% if job.final_cost %}
+        <p><strong>Final Cost:</strong> UGX {{ job.final_cost }}</p>
+        {% endif %}
     </div>
     <div class="col-md-6">
         <form method="POST">
             {{ form.hidden_tag() }}
-            <div class="mb-3">{{ form.status.label }} {{ form.status(class="form-control") }}</div>
+            <div class="mb-3">{{ form.status.label }} {{ form.status(class="form-select") }}</div>
             <div class="mb-3">{{ form.final_cost.label }} {{ form.final_cost(class="form-control") }}</div>
             <div class="mb-3">{{ form.completion_date.label }} {{ form.completion_date(class="form-control") }}</div>
             <div class="mb-3">{{ form.notes.label }} {{ form.notes(class="form-control") }}</div>

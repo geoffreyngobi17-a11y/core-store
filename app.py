@@ -504,6 +504,37 @@ def fix_tables():
         db.session.execute(text('ALTER TABLE repair_jobs ADD FOREIGN KEY (assigned_to) REFERENCES users(id);'))
         db.session.commit()
         return f"Missing tables created: {missing}<br>All tables now: {inspector.get_table_names()}"
+@app.route('/fix-invoices')
+def fix_invoices():
+    with app.app_context():
+        # Drop the invoices table if it exists
+        from models import Invoice
+        db.session.execute("DROP TABLE IF EXISTS invoices CASCADE")
+        db.session.commit()
+        # Recreate all tables (or just invoices)
+        db.create_all()
+        return "Invoices table recreated. Go back and try again."
+@app.route('/rebuild-tables')
+def rebuild_tables():
+    from sqlalchemy import inspect
+    with app.app_context():
+        # Drop only the tables that are problematic
+        db.session.execute("DROP TABLE IF EXISTS invoices CASCADE")
+        db.session.execute("DROP TABLE IF EXISTS repair_jobs CASCADE")
+        db.session.commit()
+        # Recreate them
+        db.create_all()
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        return f"Rebuilt tables. Now have: {tables}"
+        if job.status == 'completed' and old_status != 'completed':
+            if not hasattr(job, 'invoice') or job.invoice is None:
+                # ... invoice creation code ...
+        # TEMPORARILY DISABLED: invoice creation
+        # if job.status == 'completed' and old_status != 'completed':
+        #     if not hasattr(job, 'invoice') or job.invoice is None:
+        #         # ... invoice creation code ...
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
