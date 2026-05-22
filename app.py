@@ -517,24 +517,19 @@ def fix_invoices():
 @app.route('/rebuild-tables')
 def rebuild_tables():
     from sqlalchemy import inspect
-    with app.app_context():
-        # Drop only the tables that are problematic
-        db.session.execute("DROP TABLE IF EXISTS invoices CASCADE")
-        db.session.execute("DROP TABLE IF EXISTS repair_jobs CASCADE")
+   with app.app_context():
+    db.create_all()
+    if not User.query.filter_by(role='admin').first():
+        admin = User(
+            name='Admin',
+            email='admin@coreelectronics.com',
+            phone='+256756104402',
+            role='admin'
+        )
+        admin.set_password('Admin123!')
+        db.session.add(admin)
         db.session.commit()
-        # Recreate them
-        db.create_all()
-        inspector = inspect(db.engine)
-        tables = inspector.get_table_names()
-        return f"Rebuilt tables. Now have: {tables}"
-        if job.status == 'completed' and old_status != 'completed':
-            if not hasattr(job, 'invoice') or job.invoice is None:
-                # ... invoice creation code ...
-        # TEMPORARILY DISABLED: invoice creation
-        # if job.status == 'completed' and old_status != 'completed':
-        #     if not hasattr(job, 'invoice') or job.invoice is None:
-        #         # ... invoice creation code ...
-
+        print("Admin user created: admin@coreelectronics.com / Admin123!")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
