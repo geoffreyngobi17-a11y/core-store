@@ -517,7 +517,7 @@ def fix_invoices():
 @app.route('/rebuild-tables')
 def rebuild_tables():
     from sqlalchemy import inspect
-   with app.app_context():
+  with app.app_context():
     db.create_all()
     if not User.query.filter_by(role='admin').first():
         admin = User(
@@ -526,10 +526,12 @@ def rebuild_tables():
             phone='+256756104402',
             role='admin'
         )
-        admin.set_password('Admin123!')
+        admin.set_password('Kaumasophie123')
         db.session.add(admin)
         db.session.commit()
-        print("Admin user created: admin@coreelectronics.com / Admin123!")
+        print("Admin user created with your chosen password.")
+    else:
+        print("Admin user already exists.")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
