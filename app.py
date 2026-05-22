@@ -93,6 +93,12 @@ def dashboard():
                           low_stock=low_stock,
                           total_services=total_services,
                           recent_logs=recent_logs)
+    pending_jobs = RepairJob.query.filter_by(status='pending').count()
+    in_progress_jobs = RepairJob.query.filter_by(status='in_progress').count()
+    completed_today = RepairJob.query.filter(
+        RepairJob.status == 'completed',
+        db.func.date(RepairJob.completion_date) == db.func.current_date()
+    ).count()
 
 # ---------- Inventory ----------
 @app.route('/inventory')
@@ -246,6 +252,43 @@ def delete_service(id):
     db.session.commit()
     flash('Service deleted.', 'success')
     return redirect(url_for('services'))
+@app.route('/repair_jobs/add', methods=['GET', 'POST'])
+@login_required
+def add_repair_job():
+    if current_user.role not in ['admin', 'employee']:
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('repair_jobs'))
+    
+    form = RepairJobForm()
+    # Populate customer choices
+    form.customer_id.choices = [(c.id, f"{c.name} - {c.phone}") for c in Customer.query.all()]
+    form.customer_id.choices.insert(0, (0, '-- Select Customer --'))
+    # Populate service choices
+    form.service_id.choices = [(0, '-- None --')] + [(s.id, s.name) for s in Service.query.all()]
+    # Populate technician choices (users with role 'technician' or 'admin')
+    techs = User.query.filter(User.role.in_(['admin', 'technician'])).all()
+    form.assigned_to.choices = [(0, '-- Unassigned --')] + [(t.id, t.name) for t in techs]
+    
+    if form.validate_on_submit():
+        job = RepairJob(
+            customer_id=form.customer_id.data,
+            device_type=form.device_type.data,
+            device_model=form.device_model.data,
+            issue_description=form.issue_description.data,
+            service_id=form.service_id.data if form.service_id.data != 0 else None,
+            assigned_to=form.assigned_to.data if form.assigned_to.data != 0 else None,
+            estimated_cost=form.estimated_cost.data,
+            notes=form.notes.data,
+            status='pending'
+        )
+        db.session.add(job)
+        db.session.commit()
+        audit = AuditLog(user_id=current_user.id, action='Create Repair Job', details=f"Job for customer {job.customer.name}")
+        db.session.add(audit)
+        db.session.commit()
+        flash('Repair job created.', 'success')
+        return redirect(url_for('repair_jobs'))
+    return render_template('repair_job_form.html', form=form, title='New Repair Job')
 
 # ---------- Employees (admin only) ----------
 @app.route('/employees')
@@ -297,6 +340,19 @@ def delete_employee(id):
     db.session.commit()
     flash('Employee deleted.', 'success')
     return redirect(url_for('employees'))
+        # If status changed to 'completed' and no invoice yet, create one
+        if job.status == 'completed' and not hasattr(job, 'invoice'):
+            from models import Invoice
+            total_amount = job.final_cost if job.final_cost else (job.estimated_cost if job.estimated_cost else 0)
+            invoice = Invoice(
+                repair_job_id=job.id,
+                invoice_number=generate_invoice_number(job.id),
+                subtotal=total_amount,
+                total=total_amount,
+                paid=False
+            )
+            db.session.add(invoice)
+            flash('Invoice created for this repair.', 'success')
 
 # ---------- Audit Log ----------
 @app.route('/auditlog')
@@ -357,6 +413,115 @@ with app.app_context():
         print("Admin user created: admin@coreelectronics.com / Admin123!")
     else:
         print("Admin user already exists.")
+# ---------- Customers ----------
+@app.route('/customers')
+@login_required
+def customers():
+    customers = Customer.query.order_by(Customer.name).all()
+    return render_template('customers.html', customers=customers)
+
+@app.route('/customers/add', methods=['GET', 'POST'])
+@login_required
+def add_customer():
+    if current_user.role not in ['admin', 'employee']:
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('customers'))
+    form = CustomerForm()
+    if form.validate_on_submit():
+        customer = Customer(
+            name=form.name.data,
+            phone=form.phone.data,
+            email=form.email.data,
+            address=form.address.data
+        )
+        db.session.add(customer)
+        db.session.commit()
+        flash('Customer added.', 'success')
+        return redirect(url_for('customers'))
+    return render_template('customer_form.html', form=form, title='Add Customer')
+# ---------- Repair Jobs ----------
+@app.route('/repair_jobs')
+@login_required
+def repair_jobs():
+    if current_user.role == 'technician':
+        jobs = RepairJob.query.filter_by(assigned_to=current_user.id).order_by(RepairJob.received_date.desc()).all()
+    else:
+        jobs = RepairJob.query.order_by(RepairJob.received_date.desc()).all()
+    return render_template('repair_jobs.html', jobs=jobs)
+
+@app.route('/repair_jobs/add', methods=['GET', 'POST'])
+@login_required
+def add_repair_job():
+    if current_user.role not in ['admin', 'employee']:
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('repair_jobs'))
+    
+    form = RepairJobForm()
+    # Populate customer choices
+    form.customer_id.choices = [(c.id, f"{c.name} - {c.phone}") for c in Customer.query.all()]
+    form.customer_id.choices.insert(0, (0, '-- Select Customer --'))
+    # Populate service choices
+    form.service_id.choices = [(0, '-- None --')] + [(s.id, s.name) for s in Service.query.all()]
+    # Populate technician choices (users with role 'technician' or 'admin')
+    techs = User.query.filter(User.role.in_(['admin', 'technician'])).all()
+    form.assigned_to.choices = [(0, '-- Unassigned --')] + [(t.id, t.name) for t in techs]
+    
+    if form.validate_on_submit():
+        job = RepairJob(
+            customer_id=form.customer_id.data,
+            device_type=form.device_type.data,
+            device_model=form.device_model.data,
+            issue_description=form.issue_description.data,
+            service_id=form.service_id.data if form.service_id.data != 0 else None,
+            assigned_to=form.assigned_to.data if form.assigned_to.data != 0 else None,
+            estimated_cost=form.estimated_cost.data,
+            notes=form.notes.data,
+            status='pending'
+        )
+        db.session.add(job)
+        db.session.commit()
+        audit = AuditLog(user_id=current_user.id, action='Create Repair Job', details=f"Job for customer {job.customer.name}")
+        db.session.add(audit)
+        db.session.commit()
+        flash('Repair job created.', 'success')
+        return redirect(url_for('repair_jobs'))
+    return render_template('repair_job_form.html', form=form, title='New Repair Job')
+
+@app.route('/repair_jobs/<int:id>', methods=['GET', 'POST'])
+@login_required
+def repair_job_detail(id):
+    job = RepairJob.query.get_or_404(id)
+    # Restrict access: only admin, job assignee, or employee can view
+    if current_user.role not in ['admin', 'employee'] and job.assigned_to != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('repair_jobs'))
+    
+    form = RepairJobUpdateForm()
+    if form.validate_on_submit():
+        job.status = form.status.data
+        if form.final_cost.data:
+            job.final_cost = form.final_cost.data
+        if form.completion_date.data:
+            try:
+                from datetime import datetime
+                job.completion_date = datetime.strptime(form.completion_date.data, '%Y-%m-%d')
+            except:
+                pass
+        job.notes = form.notes.data
+        db.session.commit()
+        audit = AuditLog(user_id=current_user.id, action='Update Repair Job', details=f"Job #{job.id} status: {job.status}")
+        db.session.add(audit)
+        db.session.commit()
+        flash('Job updated.', 'success')
+        return redirect(url_for('repair_jobs'))
+    else:
+        # Pre-populate form
+        form.status.data = job.status
+        form.final_cost.data = job.final_cost
+        form.notes.data = job.notes
+        if job.completion_date:
+            form.completion_date.data = job.completion_date.strftime('%Y-%m-%d')
+    return render_template('repair_job_detail.html', job=job, form=form)
 
 # ----------------------------------------------------------------------
 # Run the app (for local testing – Render uses gunicorn)
