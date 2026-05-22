@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
+from flask import Flask, render_template, redirect, url_for, request, flash, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import func, desc
@@ -12,11 +12,28 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from models import db, User, Product, Service, AuditLog
-from forms import LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm
+from forms import (
+    LoginForm, ProductForm, ServiceForm, EmployeeForm,
+    StockAdjustForm, ChangePasswordForm
+)
 from backup_utils import backup_database_to_drive
 
+# ----------------------------------------------------------------------
+# App setup
+# ----------------------------------------------------------------------
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+db.init_app(app)
+migrate = Migrate(app, db)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+# ----------------------------------------------------------------------
+# Helper: admin required decorator
+# ----------------------------------------------------------------------
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -30,6 +47,9 @@ def admin_required(f):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# ----------------------------------------------------------------------
+# Routes
+# ----------------------------------------------------------------------
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -74,6 +94,7 @@ def dashboard():
                           total_services=total_services,
                           recent_logs=recent_logs)
 
+# ---------- Inventory ----------
 @app.route('/inventory')
 @login_required
 def inventory():
@@ -152,11 +173,6 @@ def adjust_stock(id):
         flash('Stock updated.', 'success')
         return redirect(url_for('inventory'))
     return render_template('stock_form.html', form=form, product=product)
-class ChangePasswordForm(FlaskForm):
-    current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
-    confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password')])
-    submit = SubmitField('Change Password')
 
 @app.route('/inventory/delete/<int:id>')
 @admin_required
@@ -171,6 +187,7 @@ def delete_product(id):
     flash('Product deleted.', 'success')
     return redirect(url_for('inventory'))
 
+# ---------- Services ----------
 @app.route('/services')
 @login_required
 def services():
@@ -230,6 +247,7 @@ def delete_service(id):
     flash('Service deleted.', 'success')
     return redirect(url_for('services'))
 
+# ---------- Employees (admin only) ----------
 @app.route('/employees')
 @admin_required
 def employees():
@@ -280,12 +298,14 @@ def delete_employee(id):
     flash('Employee deleted.', 'success')
     return redirect(url_for('employees'))
 
+# ---------- Audit Log ----------
 @app.route('/auditlog')
 @admin_required
 def auditlog():
     logs = AuditLog.query.order_by(desc(AuditLog.timestamp)).all()
     return render_template('auditlog.html', logs=logs)
 
+# ---------- Backup ----------
 @app.route('/admin/backup', methods=['POST'])
 @login_required
 def backup_trigger():
@@ -302,31 +322,10 @@ def backup_trigger():
         app.logger.error(f"Backup error: {e}")
         return "Internal error", 500
 
-# Create database tables and admin user on startup
-with app.app_context():
-    # This line will create all the tables defined in models.py
-    db.create_all()
-    print("Tables created (or already exist).")
-
-    # Now, check for and create the admin user
-    if not User.query.filter_by(role='admin').first():
-        admin = User(
-            name='Admin',
-            email='admin@coreelectronics.com',
-            phone='+256756104402',
-            role='admin'
-        )
-        admin.set_password('Admin123!')
-        db.session.add(admin)
-        db.session.commit()
-        print("Admin user created: admin@coreelectronics.com / Admin123!")
-    else:
-        print("Admin user already exists.")
-if __name__ == '__main__':
+# ---------- Change Password (add to forms.py too) ----------
 @app.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
-    from forms import ChangePasswordForm
     form = ChangePasswordForm()
     if form.validate_on_submit():
         if not current_user.check_password(form.current_password.data):
@@ -339,9 +338,12 @@ def change_password():
         return redirect(url_for('login'))
     return render_template('change_password.html', form=form)
 
-# Create tables and admin user inside app context
+# ----------------------------------------------------------------------
+# Create tables and admin user (runs once on startup)
+# ----------------------------------------------------------------------
 with app.app_context():
     db.create_all()
+    print("Tables created (or already exist).")
     if not User.query.filter_by(role='admin').first():
         admin = User(
             name='Admin',
@@ -356,6 +358,9 @@ with app.app_context():
     else:
         print("Admin user already exists.")
 
+# ----------------------------------------------------------------------
+# Run the app (for local testing – Render uses gunicorn)
+# ----------------------------------------------------------------------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
