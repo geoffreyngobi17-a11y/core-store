@@ -14,8 +14,12 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default='employee')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    def set_password(self, password): self.password_hash = generate_password_hash(password)
-    def check_password(self, password): return check_password_hash(self.password_hash, password)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -60,10 +64,12 @@ class RepairJob(db.Model):
     received_date = db.Column(db.DateTime, default=datetime.utcnow)
     completion_date = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text)
+
     customer = db.relationship('Customer', backref='repair_jobs')
     service = db.relationship('Service', backref='repair_jobs')
     technician = db.relationship('User', backref='assigned_jobs')
-    
+    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), uselist=False)
+
 class Invoice(db.Model):
     __tablename__ = 'invoices'
     id = db.Column(db.Integer, primary_key=True)
@@ -77,24 +83,14 @@ class Invoice(db.Model):
     paid = db.Column(db.Boolean, default=False)
     payment_date = db.Column(db.DateTime, nullable=True)
 
-    # This is the correct relationship definition
-    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), uselist=False)
-
-class AuditLog(db.Model):
-    __tablename__ = 'audit_logs'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    action = db.Column(db.String(100), nullable=False)
-    details = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref=db.backref('logs', lazy=True))
+    repair_job = db.relationship('RepairJob', backref='invoice', uselist=False)
 class Sale(db.Model):
     __tablename__ = 'sales'
     id = db.Column(db.Integer, primary_key=True)
     sale_date = db.Column(db.DateTime, default=datetime.utcnow)
-    item_type = db.Column(db.String(20), nullable=False)
-    item_id = db.Column(db.Integer, nullable=False)
-    item_name = db.Column(db.String(200), nullable=False)
+    item_type = db.Column(db.String(20), nullable=False)  # 'product' or 'service'
+    item_id = db.Column(db.Integer, nullable=False)       # product.id or service.id
+    item_name = db.Column(db.String(200), nullable=False) # denormalized for speed
     quantity = db.Column(db.Integer, default=1)
     unit_price = db.Column(db.Numeric(10,2), nullable=False)
     total_price = db.Column(db.Numeric(10,2), nullable=False)
@@ -103,3 +99,23 @@ class Sale(db.Model):
     notes = db.Column(db.Text)
 
     seller = db.relationship('User', backref='sales')
+class Expense(db.Model):
+    __tablename__ = 'expenses'
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    amount = db.Column(db.Numeric(10,2), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='expenses')
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    action = db.Column(db.String(100), nullable=False)
+    details = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('logs', lazy=True))
