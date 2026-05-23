@@ -408,19 +408,6 @@ def invoices():
     all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
     return render_template('invoices.html', invoices=all_invoices)
 
-@app.route('/invoices/<int:invoice_id>/pay', methods=['POST'])
-@login_required
-def mark_invoice_paid(invoice_id):
-    invoice = Invoice.query.get_or_404(invoice_id)
-    if current_user.role not in ['admin', 'employee']:
-        abort(403)
-    invoice.paid = True
-    invoice.payment_date = datetime.utcnow()
-    db.session.commit()
-    db.session.add(AuditLog(user_id=current_user.id, action='Mark Invoice Paid', details=f'Invoice {invoice.invoice_number}'))
-    db.session.commit()
-    flash(f'Invoice {invoice.invoice_number} marked as paid.', 'success')
-    return redirect(url_for('repair_job_detail', id=invoice.repair_job_id))
 
 # Sales
 @app.route('/sales')
@@ -527,8 +514,7 @@ with app.app_context():
 def invoices():
     try:
         all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
-    except Exception as e:
-        # Table likely missing – create it
+    except Exception:
         with app.app_context():
             db.create_all()
         all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
