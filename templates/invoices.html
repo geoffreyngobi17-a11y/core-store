@@ -1,5 +1,48 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>All Invoices</h2>
-<table class="table table-striped"><thead class="table-dark"><tr><th>Invoice #</th><th>Repair Job</th><th>Customer</th><th>Total (UGX)</th><th>Paid</th><th>Issue Date</th><th>Action</th></tr></thead><tbody>{% for inv in invoices %}<tr><td>{{ inv.invoice_number }}</td><td><a href="{{ url_for('repair_job_detail', id=inv.repair_job_id) }}">Job #{{ inv.repair_job_id }}</a></td><td>{{ inv.repair_job.customer.name }}</td><td>{{ "{:,.0f}".format(inv.total) }}</td><td>{% if inv.paid %}✅{% else %}❌{% endif %}</td><td>{{ inv.issue_date.strftime('%Y-%m-%d') }}</td><td>{% if not inv.paid %}<form method="POST" action="{{ url_for('mark_invoice_paid', invoice_id=inv.id) }}"><button class="btn btn-sm btn-success" onclick="return confirm('Mark as paid?')">Pay</button></form>{% endif %}</td></tr>{% endfor %}</tbody></table>
+<table class="table table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Invoice #</th>
+            <th>Repair Job</th>
+            <th>Customer</th>
+            <th>Total (UGX)</th>
+            <th>Paid</th>
+            <th>Issue Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inv in invoices %}
+        <tr>
+            <td>{{ inv.invoice_number }}</td>
+            <td><a href="{{ url_for('repair_job_detail', id=inv.repair_job_id) }}">Job #{{ inv.repair_job_id }}</a></td>
+            <td>{{ inv.repair_job.customer.name }}</td>
+            <td>{{ "{:,.0f}".format(inv.total) }}</td>
+            <td>{% if inv.paid %}✅{% else %}❌{% endif %}</td>
+            <td>{{ inv.issue_date.strftime('%Y-%m-%d') }}</td>
+            <td>
+                {% if not inv.paid %}
+                <form method="POST" action="{{ url_for('mark_invoice_paid', invoice_id=inv.id) }}" style="display:inline;">
+                    <button class="btn btn-sm btn-success" onclick="return confirm('Mark as paid?')">Pay</button>
+                </form>
+                {% endif %}
+                <button class="btn btn-sm btn-secondary" onclick="printInvoice({{ inv.id }})">Print</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function printInvoice(invoiceId) {
+    // Redirect to the repair job detail page with a print trigger
+    var url = "{{ url_for('repair_job_detail', id=0) }}".replace('0', invoiceId);
+    var printWindow = window.open(url, '_blank');
+    printWindow.onload = function() {
+        printWindow.print();
+    };
+}
+</script>
 {% endblock %}

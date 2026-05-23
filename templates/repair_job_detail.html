@@ -1,4 +1,31 @@
 {% extends "base.html" %}
+{% extends "base.html" %}
+{% block content %}
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .print-area, .print-area * {
+        visibility: visible;
+    }
+    .print-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 20px;
+    }
+    .no-print {
+        display: none;
+    }
+    .card-header {
+        background-color: #28a745 !important;
+        color: white !important;
+    }
+}
+</style>
+<!-- rest of your template -->
 {% block content %}
 <h2>Repair Job #{{ job.id }}</h2>
 <div class="row">
