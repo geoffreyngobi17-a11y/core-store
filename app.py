@@ -15,6 +15,7 @@ from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjus
                    ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm,
                    SaleForm, ExpenseForm)
 from backup_utils import backup_database_to_drive
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
@@ -41,6 +42,13 @@ def load_user(user_id):
 def generate_invoice_number(job_id):
     return f"INV-{job_id}-{datetime.utcnow().strftime('%Y%m%d%H%M')}"
 
+def get_cart():
+    return session.get('cart', [])
+
+def save_cart(cart):
+    session['cart'] = cart
+
+# ---------- Routes ----------
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -486,11 +494,149 @@ def add_sale():
         flash('Sale recorded successfully.', 'success')
         return redirect(url_for('sales_list'))
     return render_template('sale_form.html', form=form)
+
 @app.route('/sales/<int:sale_id>/invoice')
 @login_required
 def sale_invoice(sale_id):
     sale = Sale.query.get_or_404(sale_id)
     return render_template('sale_invoice.html', sale=sale)
+
+# ---------- Point of Sale (Cart) ----------
+@app.route('/add-to-cart/product/<int:product_id>', methods=['POST'])
+@login_required
+def add_product_to_cart(product_id):
+    product = Product.query.get_or_404(product_id)
+    cart = get_cart()
+    quantity = int(request.form.get('quantity', 1))
+    for item in cart:
+        if item['type'] == 'product' and item['id'] == product_id:
+            item['quantity'] += quantity
+            break
+    else:
+        cart.append({
+            'type': 'product',
+            'id': product_id,
+            'name': product.name,
+            'price': float(product.unit_price),
+            'quantity': quantity
+        })
+    save_cart(cart)
+    flash(f'Added {product.name} to cart.', 'success')
+    return redirect(url_for('view_cart'))
+
+@app.route('/add-to-cart/service/<int:service_id>', methods=['POST'])
+@login_required
+def add_service_to_cart(service_id):
+    service = Service.query.get_or_404(service_id)
+    cart = get_cart()
+    quantity = int(request.form.get('quantity', 1))
+    for item in cart:
+        if item['type'] == 'service' and item['id'] == service_id:
+            item['quantity'] += quantity
+            break
+    else:
+        cart.append({
+            'type': 'service',
+            'id': service_id,
+            'name': service.name,
+            'price': float(service.price),
+            'quantity': quantity
+        })
+    save_cart(cart)
+    flash(f'Added {service.name} to cart.', 'success')
+    return redirect(url_for('view_cart'))
+
+@app.route('/cart')
+@login_required
+def view_cart():
+    cart = get_cart()
+    total = sum(item['price'] * item['quantity'] for item in cart)
+    return render_template('cart.html', cart=cart, total=total)
+
+@app.route('/cart/update', methods=['POST'])
+@login_required
+def update_cart():
+    cart = get_cart()
+    for key, item in enumerate(cart):
+        qty = request.form.get(f'qty_{key}')
+        if qty:
+            item['quantity'] = int(qty)
+        if request.form.get(f'remove_{key}'):
+            cart.pop(key)
+    save_cart([item for item in cart if item['quantity'] > 0])
+    flash('Cart updated.', 'success')
+    return redirect(url_for('view_cart'))
+
+@app.route('/checkout')
+@login_required
+def checkout():
+    cart = get_cart()
+    if not cart:
+        flash('Cart is empty.', 'warning')
+        return redirect(url_for('view_cart'))
+    total = sum(item['price'] * item['quantity'] for item in cart)
+    return render_template('checkout_invoice.html', cart=cart, total=total, sale_date=datetime.utcnow())
+
+@app.route('/cart/clear')
+@login_required
+def clear_cart():
+    session.pop('cart', None)
+    flash('Cart cleared.', 'success')
+    return redirect(url_for('view_cart'))
+
+@app.route('/pos')
+@login_required
+def pos():
+    products = Product.query.all()
+    services = Service.query.all()
+    return render_template('pos.html', products=products, services=services)
+
+# ---------- Expenses ----------
+@app.route('/expenses')
+@login_required
+def expense_list():
+    if current_user.role == 'admin':
+        expenses = Expense.query.order_by(Expense.date.desc()).all()
+    else:
+        expenses = Expense.query.filter_by(recorded_by=current_user.id).order_by(Expense.date.desc()).all()
+    total_expenses = sum(e.amount for e in expenses)
+    return render_template('expenses.html', expenses=expenses, total_expenses=total_expenses)
+
+@app.route('/expenses/add', methods=['GET', 'POST'])
+@login_required
+def add_expense():
+    form = ExpenseForm()
+    if form.validate_on_submit():
+        try:
+            expense_date = datetime.strptime(form.date.data, '%Y-%m-%d')
+        except:
+            expense_date = datetime.utcnow()
+        expense = Expense(
+            date=expense_date,
+            amount=form.amount.data,
+            category=form.category.data,
+            description=form.description.data,
+            recorded_by=current_user.id
+        )
+        db.session.add(expense)
+        db.session.commit()
+        db.session.add(AuditLog(user_id=current_user.id, action='Add Expense', details=f'{form.category.data} - UGX {form.amount.data}'))
+        db.session.commit()
+        flash('Expense recorded successfully.', 'success')
+        return redirect(url_for('expense_list'))
+    form.date.data = datetime.utcnow().strftime('%Y-%m-%d')
+    return render_template('expense_form.html', form=form, title='Record Expense')
+
+@app.route('/expenses/delete/<int:id>')
+@admin_required
+def delete_expense(id):
+    expense = Expense.query.get_or_404(id)
+    db.session.delete(expense)
+    db.session.commit()
+    db.session.add(AuditLog(user_id=current_user.id, action='Delete Expense', details=f'Deleted expense #{id}'))
+    db.session.commit()
+    flash('Expense deleted.', 'success')
+    return redirect(url_for('expense_list'))
 
 # ---------- Audit Log ----------
 @app.route('/auditlog')
@@ -516,7 +662,7 @@ def backup_trigger():
         app.logger.error(f"Backup error: {e}")
         return "Internal error", 500
 
-# ---------- Manual invoice generation for completed jobs ----------
+# ---------- Manual invoice generation ----------
 @app.route('/repair_jobs/<int:id>/generate-invoice')
 @login_required
 def generate_invoice(id):
@@ -531,7 +677,6 @@ def generate_invoice(id):
     if total == 0:
         flash('Cannot generate invoice: no cost (estimated or final) set.', 'danger')
         return redirect(url_for('repair_job_detail', id=id))
-    from models import Invoice
     invoice = Invoice(
         repair_job_id=job.id,
         invoice_number=f"INV-{job.id}-{datetime.utcnow().strftime('%Y%m%d%H%M')}",
@@ -544,7 +689,7 @@ def generate_invoice(id):
     flash('Invoice generated successfully.', 'success')
     return redirect(url_for('repair_job_detail', id=id))
 
-# ---------- Create tables and admin user ----------
+# ---------- Database and admin creation ----------
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(role='admin').first():
@@ -558,200 +703,11 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
-@app.route('/cleanup-invoices')
-def cleanup_invoices():
-    from sqlalchemy import text
-    with app.app_context():
-        # Delete all existing invoices
-        db.engine.execute(text("DELETE FROM invoices"))
-        # Reset the ID sequence
-        db.engine.execute(text("ALTER SEQUENCE invoices_id_seq RESTART WITH 1"))
-    return "All old invoices deleted. Now go to each completed repair job and click 'Generate Invoice'."
-@app.route('/add-to-cart/product/<int:product_id>', methods=['POST'])
-@login_required
-def add_product_to_cart(product_id):
-    product = Product.query.get_or_404(product_id)
-    cart = get_cart()
-    quantity = int(request.form.get('quantity', 1))
-    # Check if item already in cart
-    for item in cart:
-        if item['type'] == 'product' and item['id'] == product_id:
-            item['quantity'] += quantity
-            break
-    else:
-        cart.append({
-            'type': 'product',
-            'id': product_id,
-            'name': product.name,
-            'price': float(product.unit_price),
-            'quantity': quantity
-        })
-    save_cart(cart)
-    flash(f'Added {product.name} to cart.', 'success')
-    return redirect(url_for('view_cart'))
-@app.route('/add-to-cart/service/<int:service_id>', methods=['POST'])
-@login_required
-def add_service_to_cart(service_id):
-    service = Service.query.get_or_404(service_id)
-    cart = get_cart()
-    quantity = int(request.form.get('quantity', 1))
-    for item in cart:
-        if item['type'] == 'service' and item['id'] == service_id:
-            item['quantity'] += quantity
-            break
-    else:
-        cart.append({
-            'type': 'service',
-            'id': service_id,
-            'name': service.name,
-            'price': float(service.price),
-            'quantity': quantity
-        })
-    save_cart(cart)
-    flash(f'Added {service.name} to cart.', 'success')
-    return redirect(url_for('view_cart'))
-@app.route('/cart')
-@login_required
-def view_cart():
-    cart = get_cart()
-    total = sum(item['price'] * item['quantity'] for item in cart)
-    return render_template('cart.html', cart=cart, total=total)
-@app.route('/cart/update', methods=['POST'])
-@login_required
-def update_cart():
-    cart = get_cart()
-    for key, item in enumerate(cart):
-        qty = request.form.get(f'qty_{key}')
-        if qty:
-            item['quantity'] = int(qty)
-        if request.form.get(f'remove_{key}'):
-            cart.pop(key)
-    save_cart([item for item in cart if item['quantity'] > 0])
-    flash('Cart updated.', 'success')
-    return redirect(url_for('view_cart'))
-@app.route('/checkout')
-@login_required
-def checkout():
-    cart = get_cart()
-    if not cart:
-        flash('Cart is empty.', 'warning')
-        return redirect(url_for('view_cart'))
-    total = sum(item['price'] * item['quantity'] for item in cart)
-    # Optional: save transaction to database here (if you want history)
-    # For now, just show printable invoice
-    return render_template('checkout_invoice.html', cart=cart, total=total, sale_date=datetime.utcnow())
-@app.route('/cart/clear')
-@login_required
-def clear_cart():
-    session.pop('cart', None)
-    flash('Cart cleared.', 'success')
-    return redirect(url_for('view_cart'))
+
+# ---------- Jinja globals ----------
 app.jinja_env.globals.update(enumerate=enumerate)
 
-@app.route('/pos')
-@login_required
-def pos():
-    products = Product.query.all()
-    services = Service.query.all()
-    return render_template('pos.html', products=products, services=services)
-# ---------- Expenses ----------
-@app.route('/expenses')
-@login_required
-def expense_list():
-    if current_user.role == 'admin':
-        expenses = Expense.query.order_by(Expense.date.desc()).all()
-    else:
-        expenses = Expense.query.filter_by(recorded_by=current_user.id).order_by(Expense.date.desc()).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('expenses.html', expenses=expenses, total_expenses=total_expenses)
-
-@app.route('/expenses/add', methods=['GET', 'POST'])
-@login_required
-def add_expense():
-    form = ExpenseForm()
-    if form.validate_on_submit():
-        from datetime import datetime
-        try:
-            expense_date = datetime.strptime(form.date.data, '%Y-%m-%d')
-        except:
-            expense_date = datetime.utcnow()
-        expense = Expense(
-            date=expense_date,
-            amount=form.amount.data,
-            category=form.category.data,
-            description=form.description.data,
-            recorded_by=current_user.id
-        )
-        db.session.add(expense)
-        db.session.commit()
-        db.session.add(AuditLog(user_id=current_user.id, action='Add Expense', details=f'{form.category.data} - UGX {form.amount.data}'))
-        db.session.commit()
-        flash('Expense recorded successfully.', 'success')
-        return redirect(url_for('expense_list'))
-    # prefill date with today
-    form.date.data = datetime.utcnow().strftime('%Y-%m-%d')
-    return render_template('expense_form.html', form=form, title='Record Expense')
-
-@app.route('/expenses/delete/<int:id>')
-@admin_required
-def delete_expense(id):
-    expense = Expense.query.get_or_404(id)
-    db.session.delete(expense)
-    db.session.commit()
-    db.session.add(AuditLog(user_id=current_user.id, action='Delete Expense', details=f'Deleted expense #{id}'))
-    db.session.commit()
-    flash('Expense deleted.', 'success')
-    return redirect(url_for('expense_list'))
-# ---------- Expenses ----------
-@app.route('/expenses')
-@login_required
-def expense_list():
-    if current_user.role == 'admin':
-        expenses = Expense.query.order_by(Expense.date.desc()).all()
-    else:
-        expenses = Expense.query.filter_by(recorded_by=current_user.id).order_by(Expense.date.desc()).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('expenses.html', expenses=expenses, total_expenses=total_expenses)
-
-@app.route('/expenses/add', methods=['GET', 'POST'])
-@login_required
-def add_expense():
-    form = ExpenseForm()
-    if form.validate_on_submit():
-        from datetime import datetime
-        try:
-            expense_date = datetime.strptime(form.date.data, '%Y-%m-%d')
-        except:
-            expense_date = datetime.utcnow()
-        expense = Expense(
-            date=expense_date,
-            amount=form.amount.data,
-            category=form.category.data,
-            description=form.description.data,
-            recorded_by=current_user.id
-        )
-        db.session.add(expense)
-        db.session.commit()
-        db.session.add(AuditLog(user_id=current_user.id, action='Add Expense', details=f'{form.category.data} - UGX {form.amount.data}'))
-        db.session.commit()
-        flash('Expense recorded successfully.', 'success')
-        return redirect(url_for('expense_list'))
-    from datetime import datetime
-    form.date.data = datetime.utcnow().strftime('%Y-%m-%d')
-    return render_template('expense_form.html', form=form, title='Record Expense')
-
-@app.route('/expenses/delete/<int:id>')
-@admin_required
-def delete_expense(id):
-    expense = Expense.query.get_or_404(id)
-    db.session.delete(expense)
-    db.session.commit()
-    db.session.add(AuditLog(user_id=current_user.id, action='Delete Expense', details=f'Deleted expense #{id}'))
-    db.session.commit()
-    flash('Expense deleted.', 'success')
-    return redirect(url_for('expense_list'))
-
-# ---------- Run the app ----------
+# ---------- Run ----------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
