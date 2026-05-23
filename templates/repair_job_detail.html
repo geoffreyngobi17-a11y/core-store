@@ -87,6 +87,14 @@
         {% endif %}
     </div>
 </div>
+{% if job.status == 'completed' and not job.invoice %}
+<div class="card mt-3">
+    <div class="card-body">
+        <a href="{{ url_for('generate_invoice', id=job.id) }}" class="btn btn-warning">Generate Invoice</a>
+        <small class="text-muted">(If invoice was not created automatically)</small>
+    </div>
+</div>
+{% endif %}
 
 <a href="{{ url_for('repair_jobs') }}" class="btn btn-secondary no-print">Back to Jobs</a>
 {% endblock %}

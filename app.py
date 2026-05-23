@@ -607,6 +607,34 @@ def check_database():
         final_tables = inspector.get_table_names()
         messages.append(f"\n**Tables in the database now:** {final_tables}")
         messages.append(f"\n**Go to the [Invoices page](/invoices) to see if it works.**")
+@app.route('/repair_jobs/<int:id>/generate-invoice')
+@login_required
+def generate_invoice(id):
+    job = RepairJob.query.get_or_404(id)
+    if job.status != 'completed':
+        flash('Can only generate invoice for completed jobs.', 'warning')
+        return redirect(url_for('repair_job_detail', id=id))
+    if hasattr(job, 'invoice') and job.invoice:
+        flash('Invoice already exists for this job.', 'info')
+        return redirect(url_for('repair_job_detail', id=id))
+    # Calculate total amount
+    total = job.final_cost if job.final_cost else (job.estimated_cost if job.estimated_cost else 0)
+    if total == 0:
+        flash('Cannot generate invoice: no cost (estimated or final) set.', 'danger')
+        return redirect(url_for('repair_job_detail', id=id))
+    # Create invoice
+    from models import Invoice
+    invoice = Invoice(
+        repair_job_id=job.id,
+        invoice_number=f"INV-{job.id}-{datetime.utcnow().strftime('%Y%m%d%H%M')}",
+        subtotal=total,
+        total=total,
+        paid=False
+    )
+    db.session.add(invoice)
+    db.session.commit()
+    flash('Invoice generated successfully.', 'success')
+    return redirect(url_for('repair_job_detail', id=id))
         return "<br>".join(messages)
 
 # ---------- Run the app ----------
