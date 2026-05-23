@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+@media print {
+    .no-print { display: none; }
+    .print-area { margin: 0; padding: 0; }
+}
+</style>
+<div class="print-area">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h3>CORE STORE – SALE RECEIPT</h3>
+        </div>
+        <div class="card-body">
+            <p><strong>Receipt #:</strong> {{ sale.id }}</p>
+            <p><strong>Date:</strong> {{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Customer:</strong> {{ sale.customer_name or 'Walk‑in Customer' }}</p>
+            <p><strong>Sold by:</strong> {{ sale.seller.name }}</p>
+            <hr>
+            <p><strong>Item:</strong> {{ sale.item_name }}</p>
+            <p><strong>Type:</strong> {{ sale.item_type|capitalize }}</p>
+            <p><strong>Quantity:</strong> {{ sale.quantity }}</p>
+            <p><strong>Unit Price:</strong> UGX {{ "{:,.0f}".format(sale.unit_price) }}</p>
+            <p><strong>Total Amount:</strong> UGX {{ "{:,.0f}".format(sale.total_price) }}</p>
+            {% if sale.notes %}
+            <hr>
+            <p><strong>Notes:</strong> {{ sale.notes }}</p>
+            {% endif %}
+        </div>
+        <div class="card-footer text-muted">
+            Thank you for your business!
+        </div>
+    </div>
+</div>
+<div class="no-print mt-3">
+    <button class="btn btn-primary" onclick="window.print();">🖨️ Print Receipt</button>
+    <a href="{{ url_for('sales_list') }}" class="btn btn-secondary">Back to Sales</a>
+</div>
+{% endblock %}

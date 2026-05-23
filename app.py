@@ -487,6 +487,11 @@ def add_sale():
         flash('Sale recorded successfully.', 'success')
         return redirect(url_for('sales_list'))
     return render_template('sale_form.html', form=form)
+@app.route('/sales/<int:sale_id>/invoice')
+@login_required
+def sale_invoice(sale_id):
+    sale = Sale.query.get_or_404(sale_id)
+    return render_template('sale_invoice.html', sale=sale)
 
 # ---------- Audit Log ----------
 @app.route('/auditlog')

@@ -17,6 +17,8 @@
             <td><strong>{{ "{:,.0f}".format(sale.total_price) }}</strong></td>
             <td>{{ sale.customer_name or '-' }}</td>
             <td>{{ sale.seller.name }}</td>
+<td>
+    <a href="{{ url_for('sale_invoice', sale_id=sale.id) }}" class="btn btn-sm btn-secondary">Invoice</a>
         </tr>
         {% endfor %}
     </tbody>
