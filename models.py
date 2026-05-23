@@ -72,6 +72,7 @@ class RepairJob(db.Model):
 
 class Invoice(db.Model):
     __tablename__ = 'invoices'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
     repair_job_id = db.Column(db.Integer, db.ForeignKey('repair_jobs.id'), nullable=False, unique=True)
     invoice_number = db.Column(db.String(50), unique=True, nullable=False)
@@ -83,7 +84,8 @@ class Invoice(db.Model):
     paid = db.Column(db.Boolean, default=False)
     payment_date = db.Column(db.DateTime, nullable=True)
 
-    repair_job = db.relationship('RepairJob', backref='invoice', uselist=False)
+    # Correct relationship – points to RepairJob
+    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), foreign_keys=[repair_job_id])
 class Sale(db.Model):
     __tablename__ = 'sales'
     id = db.Column(db.Integer, primary_key=True)
