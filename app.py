@@ -1,16 +1,8 @@
 import os
-from flask import session
-
-def get_cart():
-    return session.get('cart', [])
-
-def save_cart(cart):
-    session['cart'] = cart
 import secrets
 from datetime import datetime
 from functools import wraps
-
-from flask import Flask, render_template, redirect, url_for, request, flash, abort
+from flask import Flask, render_template, redirect, url_for, request, flash, abort, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import func, desc
@@ -18,10 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice, Sale
-from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm,
-                   ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm, SaleForm)
-from backup_utils import backup_database_to_drive
 from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice, Sale, Expense
 from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm,
                    ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm,
