@@ -526,12 +526,39 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
-# TEMPORARY ROUTE – creates missing invoices table
-@app.route('/create-invoices-table')
-def create_invoices_table():
+# TEMPORARY DIAGNOSTIC ROUTE – check and create invoices table
+@app.route('/repair-db')
+def repair_db():
+    from sqlalchemy import inspect, text
     with app.app_context():
-        db.create_all()  # creates all missing tables, including invoices
-    return "Invoices table created (if it was missing). Now go to /invoices"
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        result = f"Existing tables: {existing_tables}<br>"
+        
+        if 'invoices' not in existing_tables:
+            # Create the invoices table using raw SQL
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE invoices (
+                        id SERIAL PRIMARY KEY,
+                        repair_job_id INTEGER NOT NULL UNIQUE REFERENCES repair_jobs(id),
+                        invoice_number VARCHAR(50) NOT NULL UNIQUE,
+                        issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        due_date TIMESTAMP,
+                        subtotal NUMERIC(10,2) NOT NULL,
+                        tax NUMERIC(10,2) DEFAULT 0,
+                        total NUMERIC(10,2) NOT NULL,
+                        paid BOOLEAN DEFAULT FALSE,
+                        payment_date TIMESTAMP
+                    )
+                """))
+                conn.commit()
+            result += "✅ Invoices table created successfully.<br>"
+        else:
+            result += "✅ Invoices table already exists.<br>"
+        
+        result += '<a href="/invoices">Go to Invoices page</a>'
+        return result
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
