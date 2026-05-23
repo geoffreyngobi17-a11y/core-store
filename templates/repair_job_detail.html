@@ -63,6 +63,15 @@
             </div>
         </div>
 
+        {% if job.status == 'completed' and not job.invoice %}
+        <div class="card mb-3 no-print">
+            <div class="card-body">
+                <a href="{{ url_for('generate_invoice', id=job.id) }}" class="btn btn-warning">Generate Invoice</a>
+                <small class="text-muted">(Click if invoice missing)</small>
+            </div>
+        </div>
+        {% endif %}
+
         {% if job.invoice %}
         <div class="card print-area">
             <div class="card-header bg-success text-white">
@@ -72,9 +81,9 @@
                 <p><strong>Customer:</strong> {{ job.customer.name }}</p>
                 <p><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}</p>
                 <p><strong>Issue:</strong> {{ job.issue_description }}</p>
-                <p><strong>Service Cost:</strong> UGX {{ "{:,.0f}".format(job.invoice.subtotal) }}</p>
-                <p><strong>Tax:</strong> UGX {{ "{:,.0f}".format(job.invoice.tax) }}</p>
-                <p><strong>Total:</strong> UGX {{ "{:,.0f}".format(job.invoice.total) }}</p>
+                <p><strong>Service Cost:</strong> UGX {{ "{:,.0f}".format(job.invoice.subtotal|default(0)) }}</p>
+                <p><strong>Tax:</strong> UGX {{ "{:,.0f}".format(job.invoice.tax|default(0)) }}</p>
+                <p><strong>Total:</strong> UGX {{ "{:,.0f}".format(job.invoice.total|default(0)) }}</p>
                 <p><strong>Paid:</strong> {% if job.invoice.paid %}✅ Yes on {{ job.invoice.payment_date.strftime('%Y-%m-%d') if job.invoice.payment_date else '' }}{% else %}❌ No{% endif %}</p>
                 {% if not job.invoice.paid %}
                 <form method="POST" action="{{ url_for('mark_invoice_paid', invoice_id=job.invoice.id) }}" class="no-print">
@@ -87,14 +96,6 @@
         {% endif %}
     </div>
 </div>
-{% if job.status == 'completed' and not job.invoice %}
-<div class="card mt-3">
-    <div class="card-body">
-        <a href="{{ url_for('generate_invoice', id=job.id) }}" class="btn btn-warning">Generate Invoice</a>
-        <small class="text-muted">(If invoice was not created automatically)</small>
-    </div>
-</div>
-{% endif %}
 
 <a href="{{ url_for('repair_jobs') }}" class="btn btn-secondary no-print">Back to Jobs</a>
 {% endblock %}
