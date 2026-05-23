@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Expenses</h2>
+    <a href="{{ url_for('add_expense') }}" class="btn btn-success">+ Record Expense</a>
+</div>
+<table class="table table-striped">
+    <thead class="table-dark">
+        <tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (UGX)</th><th>Recorded By</th>{% if current_user.role == 'admin' %}<th>Actions</th>{% endif %}</tr>
+    </thead>
+    <tbody>
+        {% for exp in expenses %}
+        <tr>
+            <td>{{ exp.date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ exp.category }}</td>
+            <td>{{ exp.description or '-' }}</td>
+            <td>{{ "{:,.0f}".format(exp.amount) }}</td>
+            <td>{{ exp.user.name }}</td>
+            {% if current_user.role == 'admin' %}
+            <td><a href="{{ url_for('delete_expense', id=exp.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this expense?')">Delete</a></td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        <tr class="table-secondary">
+            <td colspan="3"><strong>Total Expenses</strong></td>
+            <td><strong>{{ "{:,.0f}".format(total_expenses) }}</strong></td>
+            <td colspan="2"></td>
+        </tr>
+    </tbody>
+</table>
+{% endblock %}

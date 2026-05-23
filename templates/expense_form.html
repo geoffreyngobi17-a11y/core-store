@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ title }}</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">{{ form.date.label }} {{ form.date(class="form-control") }}</div>
+    <div class="mb-3">{{ form.amount.label }} {{ form.amount(class="form-control") }}</div>
+    <div class="mb-3">{{ form.category.label }} {{ form.category(class="form-select") }}</div>
+    <div class="mb-3">{{ form.description.label }} {{ form.description(class="form-control", rows=3) }}</div>
+    {{ form.submit(class="btn btn-primary") }}
+    <a href="{{ url_for('expense_list') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

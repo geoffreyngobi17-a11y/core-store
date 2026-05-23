@@ -22,6 +22,8 @@ from models import db, User, Product, Service, AuditLog, Customer, RepairJob, In
 from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm,
                    ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm, SaleForm)
 from backup_utils import backup_database_to_drive
+from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice, Sale, Expense
+from forms import (..., ExpenseForm)   # add ExpenseForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
@@ -662,6 +664,102 @@ def pos():
     products = Product.query.all()
     services = Service.query.all()
     return render_template('pos.html', products=products, services=services)
+# ---------- Expenses ----------
+@app.route('/expenses')
+@login_required
+def expense_list():
+    if current_user.role == 'admin':
+        expenses = Expense.query.order_by(Expense.date.desc()).all()
+    else:
+        expenses = Expense.query.filter_by(recorded_by=current_user.id).order_by(Expense.date.desc()).all()
+    total_expenses = sum(e.amount for e in expenses)
+    return render_template('expenses.html', expenses=expenses, total_expenses=total_expenses)
+
+@app.route('/expenses/add', methods=['GET', 'POST'])
+@login_required
+def add_expense():
+    form = ExpenseForm()
+    if form.validate_on_submit():
+        from datetime import datetime
+        try:
+            expense_date = datetime.strptime(form.date.data, '%Y-%m-%d')
+        except:
+            expense_date = datetime.utcnow()
+        expense = Expense(
+            date=expense_date,
+            amount=form.amount.data,
+            category=form.category.data,
+            description=form.description.data,
+            recorded_by=current_user.id
+        )
+        db.session.add(expense)
+        db.session.commit()
+        db.session.add(AuditLog(user_id=current_user.id, action='Add Expense', details=f'{form.category.data} - UGX {form.amount.data}'))
+        db.session.commit()
+        flash('Expense recorded successfully.', 'success')
+        return redirect(url_for('expense_list'))
+    # prefill date with today
+    form.date.data = datetime.utcnow().strftime('%Y-%m-%d')
+    return render_template('expense_form.html', form=form, title='Record Expense')
+
+@app.route('/expenses/delete/<int:id>')
+@admin_required
+def delete_expense(id):
+    expense = Expense.query.get_or_404(id)
+    db.session.delete(expense)
+    db.session.commit()
+    db.session.add(AuditLog(user_id=current_user.id, action='Delete Expense', details=f'Deleted expense #{id}'))
+    db.session.commit()
+    flash('Expense deleted.', 'success')
+    return redirect(url_for('expense_list'))
+# ---------- Expenses ----------
+@app.route('/expenses')
+@login_required
+def expense_list():
+    if current_user.role == 'admin':
+        expenses = Expense.query.order_by(Expense.date.desc()).all()
+    else:
+        expenses = Expense.query.filter_by(recorded_by=current_user.id).order_by(Expense.date.desc()).all()
+    total_expenses = sum(e.amount for e in expenses)
+    return render_template('expenses.html', expenses=expenses, total_expenses=total_expenses)
+
+@app.route('/expenses/add', methods=['GET', 'POST'])
+@login_required
+def add_expense():
+    form = ExpenseForm()
+    if form.validate_on_submit():
+        from datetime import datetime
+        try:
+            expense_date = datetime.strptime(form.date.data, '%Y-%m-%d')
+        except:
+            expense_date = datetime.utcnow()
+        expense = Expense(
+            date=expense_date,
+            amount=form.amount.data,
+            category=form.category.data,
+            description=form.description.data,
+            recorded_by=current_user.id
+        )
+        db.session.add(expense)
+        db.session.commit()
+        db.session.add(AuditLog(user_id=current_user.id, action='Add Expense', details=f'{form.category.data} - UGX {form.amount.data}'))
+        db.session.commit()
+        flash('Expense recorded successfully.', 'success')
+        return redirect(url_for('expense_list'))
+    from datetime import datetime
+    form.date.data = datetime.utcnow().strftime('%Y-%m-%d')
+    return render_template('expense_form.html', form=form, title='Record Expense')
+
+@app.route('/expenses/delete/<int:id>')
+@admin_required
+def delete_expense(id):
+    expense = Expense.query.get_or_404(id)
+    db.session.delete(expense)
+    db.session.commit()
+    db.session.add(AuditLog(user_id=current_user.id, action='Delete Expense', details=f'Deleted expense #{id}'))
+    db.session.commit()
+    flash('Expense deleted.', 'success')
+    return redirect(url_for('expense_list'))
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
