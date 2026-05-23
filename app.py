@@ -1,6 +1,6 @@
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import Flask, render_template, redirect, url_for, request, flash, abort, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -26,8 +26,6 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-
-
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -50,7 +48,6 @@ def get_cart():
 def save_cart(cart):
     session['cart'] = cart
 
-# ---------- Routes ----------
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -640,6 +637,55 @@ def delete_expense(id):
     flash('Expense deleted.', 'success')
     return redirect(url_for('expense_list'))
 
+# ---------- Reports ----------
+@app.route('/reports')
+@login_required
+def reports():
+    return render_template('reports.html')
+
+@app.route('/reports/daily')
+@login_required
+def reports_daily():
+    today = date.today()
+    sales = Sale.query.filter(func.date(Sale.sale_date) == today).all()
+    total_sales = sum(s.total_price for s in sales)
+    expenses = Expense.query.filter(func.date(Expense.date) == today).all()
+    total_expenses = sum(e.amount for e in expenses)
+    return render_template('reports_period.html', period='Daily', date=today,
+                           sales=sales, total_sales=total_sales,
+                           expenses=expenses, total_expenses=total_expenses)
+
+@app.route('/reports/weekly')
+@login_required
+def reports_weekly():
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+    sales = Sale.query.filter(Sale.sale_date >= start_of_week, Sale.sale_date <= end_of_week).all()
+    total_sales = sum(s.total_price for s in sales)
+    expenses = Expense.query.filter(Expense.date >= start_of_week, Expense.date <= end_of_week).all()
+    total_expenses = sum(e.amount for e in expenses)
+    return render_template('reports_period.html', period='Weekly', start=start_of_week, end=end_of_week,
+                           sales=sales, total_sales=total_sales,
+                           expenses=expenses, total_expenses=total_expenses)
+
+@app.route('/reports/monthly')
+@login_required
+def reports_monthly():
+    today = date.today()
+    start_of_month = today.replace(day=1)
+    if today.month == 12:
+        end_of_month = today.replace(year=today.year+1, month=1, day=1) - timedelta(days=1)
+    else:
+        end_of_month = today.replace(month=today.month+1, day=1) - timedelta(days=1)
+    sales = Sale.query.filter(Sale.sale_date >= start_of_month, Sale.sale_date <= end_of_month).all()
+    total_sales = sum(s.total_price for s in sales)
+    expenses = Expense.query.filter(Expense.date >= start_of_month, Expense.date <= end_of_month).all()
+    total_expenses = sum(e.amount for e in expenses)
+    return render_template('reports_period.html', period='Monthly', start=start_of_month, end=end_of_month,
+                           sales=sales, total_sales=total_sales,
+                           expenses=expenses, total_expenses=total_expenses)
+
 # ---------- Audit Log ----------
 @app.route('/auditlog')
 @admin_required
@@ -708,112 +754,6 @@ with app.app_context():
 
 # ---------- Jinja globals ----------
 app.jinja_env.globals.update(enumerate=enumerate)
-# ---------- Reports ----------
-from datetime import datetime, timedelta, date
-
-@app.route('/reports')
-@login_required
-def reports():
-    return render_template('reports.html')
-
-@app.route('/reports/daily')
-@login_required
-def reports_daily():
-    today = date.today()
-    # Sales
-    sales = Sale.query.filter(func.date(Sale.sale_date) == today).all()
-    total_sales = sum(s.total_price for s in sales)
-    # Expenses
-    expenses = Expense.query.filter(func.date(Expense.date) == today).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('reports_period.html', period='Daily', date=today,
-                           sales=sales, total_sales=total_sales,
-                           expenses=expenses, total_expenses=total_expenses)
-
-@app.route('/reports/weekly')
-@login_required
-def reports_weekly():
-    today = date.today()
-    start_of_week = today - timedelta(days=today.weekday())  # Monday
-    end_of_week = start_of_week + timedelta(days=6)
-    # Sales
-    sales = Sale.query.filter(Sale.sale_date >= start_of_week, Sale.sale_date <= end_of_week).all()
-    total_sales = sum(s.total_price for s in sales)
-    # Expenses
-    expenses = Expense.query.filter(Expense.date >= start_of_week, Expense.date <= end_of_week).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('reports_period.html', period='Weekly', start=start_of_week, end=end_of_week,
-                           sales=sales, total_sales=total_sales,
-                           expenses=expenses, total_expenses=total_expenses)
-
-@app.route('/reports/monthly')
-@login_required
-def reports_monthly():
-    today = date.today()
-    start_of_month = today.replace(day=1)
-    if today.month == 12:
-        end_of_month = today.replace(year=today.year+1, month=1, day=1) - timedelta(days=1)
-    else:
-        end_of_month = today.replace(month=today.month+1, day=1) - timedelta(days=1)
-    sales = Sale.query.filter(Sale.sale_date >= start_of_month, Sale.sale_date <= end_of_month).all()
-    total_sales = sum(s.total_price for s in sales)
-    expenses = Expense.query.filter(Expense.date >= start_of_month, Expense.date <= end_of_month).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('reports_period.html', period='Monthly', start=start_of_month, end=end_of_month,
-                           sales=sales, total_sales=total_sales,
-                           expenses=expenses, total_expenses=total_expenses)
-# ---------- Reports ----------
-from datetime import datetime, timedelta, date
-
-@app.route('/reports')
-@login_required
-def reports():
-    return render_template('reports.html')
-
-@app.route('/reports/daily')
-@login_required
-def reports_daily():
-    today = date.today()
-    sales = Sale.query.filter(func.date(Sale.sale_date) == today).all()
-    total_sales = sum(s.total_price for s in sales)
-    expenses = Expense.query.filter(func.date(Expense.date) == today).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('reports_period.html', period='Daily', date=today,
-                           sales=sales, total_sales=total_sales,
-                           expenses=expenses, total_expenses=total_expenses)
-
-@app.route('/reports/weekly')
-@login_required
-def reports_weekly():
-    today = date.today()
-    start_of_week = today - timedelta(days=today.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
-    sales = Sale.query.filter(Sale.sale_date >= start_of_week, Sale.sale_date <= end_of_week).all()
-    total_sales = sum(s.total_price for s in sales)
-    expenses = Expense.query.filter(Expense.date >= start_of_week, Expense.date <= end_of_week).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('reports_period.html', period='Weekly', start=start_of_week, end=end_of_week,
-                           sales=sales, total_sales=total_sales,
-                           expenses=expenses, total_expenses=total_expenses)
-
-@app.route('/reports/monthly')
-@login_required
-def reports_monthly():
-    today = date.today()
-    start_of_month = today.replace(day=1)
-    if today.month == 12:
-        end_of_month = today.replace(year=today.year+1, month=1, day=1) - timedelta(days=1)
-    else:
-        end_of_month = today.replace(month=today.month+1, day=1) - timedelta(days=1)
-    sales = Sale.query.filter(Sale.sale_date >= start_of_month, Sale.sale_date <= end_of_month).all()
-    total_sales = sum(s.total_price for s in sales)
-    expenses = Expense.query.filter(Expense.date >= start_of_month, Expense.date <= end_of_month).all()
-    total_expenses = sum(e.amount for e in expenses)
-    return render_template('reports_period.html', period='Monthly', start=start_of_month, end=end_of_month,
-                           sales=sales, total_sales=total_sales,
-                           expenses=expenses, total_expenses=total_expenses)
-# ---------- Reports ----------
-
 
 # ---------- Run ----------
 if __name__ == '__main__':
