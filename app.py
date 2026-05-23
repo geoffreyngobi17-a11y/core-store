@@ -1,26 +1,15 @@
 import os
-import secrets
-from datetime import datetime
-from functools import wraps
-from flask import Flask, render_template, redirect, url_for, request, flash, abort, session
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_migrate import Migrate
-from sqlalchemy import func, desc
-from dotenv import load_dotenv
+from urllib.parse import urlparse
 
-load_dotenv()
+# Get the DATABASE_URL from environment
+database_url = os.getenv('DATABASE_URL')
 
-from models import db, User, Product, Service, AuditLog, Customer, RepairJob, Invoice, Sale, Expense
-from forms import (LoginForm, ProductForm, ServiceForm, EmployeeForm, StockAdjustForm,
-                   ChangePasswordForm, CustomerForm, RepairJobForm, RepairJobUpdateForm,
-                   SaleForm, ExpenseForm)
-from backup_utils import backup_database_to_drive
+# Ensure the URL uses the psycopg3 driver (postgresql+psycopg://)
+if database_url and database_url.startswith('postgresql://'):
+    database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db.init_app(app)
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
