@@ -73,21 +73,34 @@
         {% endif %}
 
         {% if job.invoice %}
-        <div class="card print-area">
-            <div class="card-header bg-success text-white">
-                <h3>Invoice #{{ job.invoice.invoice_number }}</h3>
-            </div>
-            <div class="card-body">
-                <p><strong>Customer:</strong> {{ job.customer.name }}</p>
-                <p><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}</p>
-                <p><strong>Issue:</strong> {{ job.issue_description }}</p>
-                <p><strong>Service Cost:</strong> UGX {{ "{:,.0f}".format(job.invoice.subtotal|default(0)) }}</p>
-                <p><strong>Tax:</strong> UGX {{ "{:,.0f}".format(job.invoice.tax|default(0)) }}</p>
-                <p><strong>Total:</strong> UGX {{ "{:,.0f}".format(job.invoice.total|default(0)) }}</p>
-                <p><strong>Paid:</strong> {% if job.invoice.paid %}✅ Yes on {{ job.invoice.payment_date.strftime('%Y-%m-%d') if job.invoice.payment_date else '' }}{% else %}❌ No{% endif %}</p>
-                {% if not job.invoice.paid %}
-                <form method="POST" action="{{ url_for('mark_invoice_paid', invoice_id=job.invoice.id) }}" class="no-print">
-                    <button class="btn btn-success">Mark as Paid</button>
+<div class="card print-area">
+    <div class="invoice-header" style="text-align: center; border-bottom: 2px solid #28a745; margin-bottom: 20px;">
+        <img src="{{ url_for('static', filename='loogo.png') }}" alt="CORE STORE Logo" style="max-height: 80px;">
+        <h2 style="margin: 5px 0;">CORE ELECTRONICS & COMPUTER CENTRE</h2>
+        <p>Mobile & PC Repair | Electronics Sales</p>
+        <p>Tel: +256756104402 | Email: info@coreelectronics.com</p>
+    </div>
+    <div class="card-body">
+        <h3 style="background-color: #28a745; color: white; padding: 10px; border-radius: 5px;">Invoice #{{ job.invoice.invoice_number }}</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr><td width="50%"><strong>Customer:</strong> {{ job.customer.name }}</td><td><strong>Phone:</strong> {{ job.customer.phone }}</td></tr>
+            <tr><td><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}</td><td><strong>Issue:</strong> {{ job.issue_description }}</td></tr>
+            <tr><td><strong>Service Cost:</strong> UGX {{ "{:,.0f}".format(job.invoice.subtotal|default(0)) }}</td><td><strong>Tax:</strong> UGX {{ "{:,.0f}".format(job.invoice.tax|default(0)) }}</td></tr>
+            <tr><td colspan="2"><strong>Total Amount:</strong> UGX {{ "{:,.0f}".format(job.invoice.total|default(0)) }}</td></tr>
+            <tr><td><strong>Paid:</strong> {% if job.invoice.paid %}✅ Yes on {{ job.invoice.payment_date.strftime('%Y-%m-%d') if job.invoice.payment_date else '' }}{% else %}❌ No{% endif %}</td><td></td></tr>
+        </table>
+        {% if not job.invoice.paid %}
+        <form method="POST" action="{{ url_for('mark_invoice_paid', invoice_id=job.invoice.id) }}" class="no-print" style="margin-top: 15px;">
+            <button class="btn btn-success">Mark as Paid</button>
+        </form>
+        {% endif %}
+        <button class="btn btn-secondary no-print" onclick="window.print();" style="margin-top: 10px;">🖨️ Print Invoice</button>
+    </div>
+    <div class="footer" style="text-align: center; font-size: 12px; color: #7f8c8d; border-top: 1px solid #eee; padding-top: 10px; margin-top: 20px;">
+        Thank you for choosing CORE STORE. We appreciate your business!
+    </div>
+</div>
+{% endif %}
                 </form>
                 {% endif %}
                 <button class="btn btn-secondary no-print" onclick="window.print();">🖨️ Print Invoice</button>
