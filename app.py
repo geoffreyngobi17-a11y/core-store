@@ -526,24 +526,39 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
-@app.route('/reset-db')
-def reset_db():
+# TEMPORARY ROUTE – creates invoices table directly
+@app.route('/init-invoices')
+def init_invoices():
+    import sqlalchemy as sa
     with app.app_context():
-        db.drop_all()   # removes all tables
-        db.create_all() # recreates all tables from models
-        # Recreate admin user
-        from models import User
-        if not User.query.filter_by(role='admin').first():
-            admin = User(
-                name='Admin',
-                email='admin@coreelectronics.com',
-                phone='+256756104402',
-                role='admin'
-            )
-            admin.set_password('Kaumasophie123')
-            db.session.add(admin)
-            db.session.commit()
-    return "Database reset and all tables (including invoices) created. <a href='/invoices'>Go to Invoices</a>"
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        if 'invoices' not in inspector.get_table_names():
+            with db.engine.connect() as conn:
+                # Create the table
+                conn.execute(text("""
+                    CREATE TABLE invoices (
+                        id SERIAL PRIMARY KEY,
+                        repair_job_id INTEGER NOT NULL UNIQUE,
+                        invoice_number VARCHAR(50) NOT NULL UNIQUE,
+                        issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        due_date TIMESTAMP,
+                        subtotal NUMERIC(10,2) NOT NULL,
+                        tax NUMERIC(10,2) DEFAULT 0,
+                        total NUMERIC(10,2) NOT NULL,
+                        paid BOOLEAN DEFAULT FALSE,
+                        payment_date TIMESTAMP
+                    )
+                """))
+                # Add foreign key (if repair_jobs table exists)
+                conn.execute(text("""
+                    ALTER TABLE invoices ADD CONSTRAINT fk_invoices_repair_job
+                    FOREIGN KEY (repair_job_id) REFERENCES repair_jobs(id)
+                """))
+                conn.commit()
+            return "✅ Invoices table created. <a href='/invoices'>Go to Invoices</a>"
+        else:
+            return "✅ Invoices table already exists. <a href='/invoices'>Go to Invoices</a>"
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
