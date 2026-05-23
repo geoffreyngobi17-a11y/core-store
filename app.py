@@ -559,6 +559,55 @@ def init_invoices():
             return "✅ Invoices table created. <a href='/invoices'>Go to Invoices</a>"
         else:
             return "✅ Invoices table already exists. <a href='/invoices'>Go to Invoices</a>"
+# ROUTE TO CHECK AND FIX THE DATABASE
+@app.route('/check-db')
+def check_database():
+    import sqlalchemy as sa
+    from sqlalchemy import inspect, text
+    from models import Invoice # Make sure the Invoice model is imported
+
+    messages = []
+    with app.app_context():
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        messages.append(f"✅ **Tables found:** {existing_tables}")
+
+        # Check if the 'invoices' table is missing
+        if 'invoices' not in existing_tables:
+            messages.append("⚠️ **'invoices' table not found. Attempting to create it...**")
+            try:
+                with db.engine.connect() as conn:
+                    # Execute the SQL command to create the table
+                    conn.execute(text("""
+                        CREATE TABLE invoices (
+                            id SERIAL PRIMARY KEY,
+                            repair_job_id INTEGER NOT NULL UNIQUE,
+                            invoice_number VARCHAR(50) NOT NULL UNIQUE,
+                            issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            due_date TIMESTAMP,
+                            subtotal NUMERIC(10,2) NOT NULL,
+                            tax NUMERIC(10,2) DEFAULT 0,
+                            total NUMERIC(10,2) NOT NULL,
+                            paid BOOLEAN DEFAULT FALSE,
+                            payment_date TIMESTAMP
+                        )
+                    """))
+                    conn.execute(text("""
+                        ALTER TABLE invoices ADD CONSTRAINT fk_invoices_repair_job
+                        FOREIGN KEY (repair_job_id) REFERENCES repair_jobs(id)
+                    """))
+                    conn.commit()
+                messages.append("✅ **Success! The 'invoices' table has been created.**")
+            except Exception as e:
+                messages.append(f"❌ **An error occurred:** {e}")
+        else:
+            messages.append("✅ **The 'invoices' table already exists.**")
+
+        # Re-check tables after the fix
+        final_tables = inspector.get_table_names()
+        messages.append(f"\n**Tables in the database now:** {final_tables}")
+        messages.append(f"\n**Go to the [Invoices page](/invoices) to see if it works.**")
+        return "<br>".join(messages)
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
