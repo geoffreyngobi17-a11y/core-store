@@ -554,6 +554,15 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
+@app.route('/cleanup-invoices')
+def cleanup_invoices():
+    from sqlalchemy import text
+    with app.app_context():
+        # Delete all existing invoices
+        db.engine.execute(text("DELETE FROM invoices"))
+        # Reset the ID sequence
+        db.engine.execute(text("ALTER SEQUENCE invoices_id_seq RESTART WITH 1"))
+    return "All old invoices deleted. Now go to each completed repair job and click 'Generate Invoice'."
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
