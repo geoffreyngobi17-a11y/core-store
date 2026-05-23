@@ -68,7 +68,7 @@ class RepairJob(db.Model):
     customer = db.relationship('Customer', backref='repair_jobs')
     service = db.relationship('Service', backref='repair_jobs')
     technician = db.relationship('User', backref='assigned_jobs')
-    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), uselist=False)
+    # No self‑referential 'repair_job' relationship here – that was the bug
 
 class Invoice(db.Model):
     __tablename__ = 'invoices'
@@ -84,15 +84,16 @@ class Invoice(db.Model):
     paid = db.Column(db.Boolean, default=False)
     payment_date = db.Column(db.DateTime, nullable=True)
 
-    # Correct relationship – points to RepairJob
+    # One‑to‑one relationship to RepairJob
     repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), foreign_keys=[repair_job_id])
+
 class Sale(db.Model):
     __tablename__ = 'sales'
     id = db.Column(db.Integer, primary_key=True)
     sale_date = db.Column(db.DateTime, default=datetime.utcnow)
-    item_type = db.Column(db.String(20), nullable=False)  # 'product' or 'service'
-    item_id = db.Column(db.Integer, nullable=False)       # product.id or service.id
-    item_name = db.Column(db.String(200), nullable=False) # denormalized for speed
+    item_type = db.Column(db.String(20), nullable=False)
+    item_id = db.Column(db.Integer, nullable=False)
+    item_name = db.Column(db.String(200), nullable=False)
     quantity = db.Column(db.Integer, default=1)
     unit_price = db.Column(db.Numeric(10,2), nullable=False)
     total_price = db.Column(db.Numeric(10,2), nullable=False)
@@ -114,6 +115,7 @@ class Expense(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='expenses')
+
 class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
     id = db.Column(db.Integer, primary_key=True)
