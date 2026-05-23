@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ period }} Report</h2>
+{% if period == 'Daily' %}
+<p><strong>Date:</strong> {{ date.strftime('%Y-%m-%d') }}</p>
+{% else %}
+<p><strong>From:</strong> {{ start.strftime('%Y-%m-%d') }} <strong>To:</strong> {{ end.strftime('%Y-%m-%d') }}</p>
+{% endif %}
+
+<h3 class="mt-4">Sales</h3>
+<table class="table table-striped">
+    <thead class="table-dark">
+        <tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Total (UGX)</th><th>Customer</th></tr>
+    </thead>
+    <tbody>
+        {% for sale in sales %}
+        <tr>
+            <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ sale.item_name }}</td>
+            <td>{{ sale.item_type|capitalize }}</td>
+            <td>{{ sale.quantity }}</td>
+            <td>{{ "{:,.0f}".format(sale.total_price) }}</td>
+            <td>{{ sale.customer_name or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No sales in this period.{% endfor %}
+        <tr class="table-secondary">
+            <td colspan="4"><strong>Total Sales</strong></td>
+            <td colspan="2"><strong>UGX {{ "{:,.0f}".format(total_sales) }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<h3 class="mt-4">Expenses</h3>
+<table class="table table-striped">
+    <thead class="table-dark">
+        <tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (UGX)</th><th>Recorded By</th></tr>
+    </thead>
+    <tbody>
+        {% for exp in expenses %}
+        <tr>
+            <td>{{ exp.date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ exp.category }}</td>
+            <td>{{ exp.description or '-' }}</td>
+            <td>{{ "{:,.0f}".format(exp.amount) }}</td>
+            <td>{{ exp.user.name }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No expenses in this period.{% endfor %}
+        <tr class="table-secondary">
+            <td colspan="3"><strong>Total Expenses</strong></td>
+            <td colspan="2"><strong>UGX {{ "{:,.0f}".format(total_expenses) }}</strong></td>
+        </tr>
+        <tr class="table-primary">
+            <td colspan="3"><strong>Net Profit (Sales - Expenses)</strong></td>
+            <td colspan="2"><strong>UGX {{ "{:,.0f}".format(total_sales - total_expenses) }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+<a href="{{ url_for('reports') }}" class="btn btn-secondary">Back to Reports</a>
+{% endblock %}

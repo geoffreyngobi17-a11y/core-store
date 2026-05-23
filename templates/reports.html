@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Reports</h2>
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Daily Report</h5>
+                <p class="card-text">Today's sales and expenses.</p>
+                <a href="{{ url_for('reports_daily') }}" class="btn btn-primary">View</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Weekly Report</h5>
+                <p class="card-text">This week (Monday to Sunday).</p>
+                <a href="{{ url_for('reports_weekly') }}" class="btn btn-primary">View</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Monthly Report</h5>
+                <p class="card-text">Current month.</p>
+                <a href="{{ url_for('reports_monthly') }}" class="btn btn-primary">View</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
