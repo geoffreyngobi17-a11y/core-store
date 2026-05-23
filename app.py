@@ -526,39 +526,24 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
-# TEMPORARY DIAGNOSTIC ROUTE – check and create invoices table
-@app.route('/repair-db')
-def repair_db():
-    from sqlalchemy import inspect, text
+@app.route('/reset-db')
+def reset_db():
     with app.app_context():
-        inspector = inspect(db.engine)
-        existing_tables = inspector.get_table_names()
-        result = f"Existing tables: {existing_tables}<br>"
-        
-        if 'invoices' not in existing_tables:
-            # Create the invoices table using raw SQL
-            with db.engine.connect() as conn:
-                conn.execute(text("""
-                    CREATE TABLE invoices (
-                        id SERIAL PRIMARY KEY,
-                        repair_job_id INTEGER NOT NULL UNIQUE REFERENCES repair_jobs(id),
-                        invoice_number VARCHAR(50) NOT NULL UNIQUE,
-                        issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        due_date TIMESTAMP,
-                        subtotal NUMERIC(10,2) NOT NULL,
-                        tax NUMERIC(10,2) DEFAULT 0,
-                        total NUMERIC(10,2) NOT NULL,
-                        paid BOOLEAN DEFAULT FALSE,
-                        payment_date TIMESTAMP
-                    )
-                """))
-                conn.commit()
-            result += "✅ Invoices table created successfully.<br>"
-        else:
-            result += "✅ Invoices table already exists.<br>"
-        
-        result += '<a href="/invoices">Go to Invoices page</a>'
-        return result
+        db.drop_all()   # removes all tables
+        db.create_all() # recreates all tables from models
+        # Recreate admin user
+        from models import User
+        if not User.query.filter_by(role='admin').first():
+            admin = User(
+                name='Admin',
+                email='admin@coreelectronics.com',
+                phone='+256756104402',
+                role='admin'
+            )
+            admin.set_password('Kaumasophie123')
+            db.session.add(admin)
+            db.session.commit()
+    return "Database reset and all tables (including invoices) created. <a href='/invoices'>Go to Invoices</a>"
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
