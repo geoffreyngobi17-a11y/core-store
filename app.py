@@ -526,6 +526,12 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Admin user created with your chosen password.")
+# TEMPORARY ROUTE – creates missing invoices table
+@app.route('/create-invoices-table')
+def create_invoices_table():
+    with app.app_context():
+        db.create_all()  # creates all missing tables, including invoices
+    return "Invoices table created (if it was missing). Now go to /invoices"
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
