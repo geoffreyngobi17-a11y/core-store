@@ -522,6 +522,18 @@ with app.app_context():
         db.session.commit()
         print("Admin user created with your chosen password.")
 
+@app.route('/invoices')
+@admin_required
+def invoices():
+    try:
+        all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
+    except Exception as e:
+        # Table likely missing – create it
+        with app.app_context():
+            db.create_all()
+        all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
+    return render_template('invoices.html', invoices=all_invoices)
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
