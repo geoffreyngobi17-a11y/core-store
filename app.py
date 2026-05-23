@@ -608,37 +608,7 @@ def check_database():
         messages.append(f"\n**Tables in the database now:** {final_tables}")
         messages.append(f"\n**Go to the [Invoices page](/invoices) to see if it works.**")
         return "<br>".join(messages)
-@app.route('/force-invoices')
-def force_invoices():
-    from sqlalchemy import text
-    with app.app_context():
-        with db.engine.begin() as conn:
-            # Drop the table if it exists (clean slate)
-            conn.execute(text("DROP TABLE IF EXISTS invoices CASCADE"))
-            # Create the table
-            conn.execute(text("""
-                CREATE TABLE invoices (
-                    id SERIAL PRIMARY KEY,
-                    repair_job_id INTEGER NOT NULL UNIQUE,
-                    invoice_number VARCHAR(50) NOT NULL UNIQUE,
-                    issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    due_date TIMESTAMP,
-                    subtotal NUMERIC(10,2) NOT NULL,
-                    tax NUMERIC(10,2) DEFAULT 0,
-                    total NUMERIC(10,2) NOT NULL,
-                    paid BOOLEAN DEFAULT FALSE,
-                    payment_date TIMESTAMP
-                )
-            """))
-            # Add foreign key constraint (only if repair_jobs exists)
-            try:
-                conn.execute(text("""
-                    ALTER TABLE invoices ADD CONSTRAINT fk_invoices_repair_job
-                    FOREIGN KEY (repair_job_id) REFERENCES repair_jobs(id)
-                """))
-            except:
-                pass
-    return "✅ Invoices table recreated successfully. <a href='/invoices'>Go to Invoices</a>"
+
 # ---------- Run the app ----------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
