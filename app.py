@@ -401,7 +401,6 @@ def repair_job_detail(id):
             form.completion_date.data = job.completion_date.strftime('%Y-%m-%d')
     return render_template('repair_job_detail.html', job=job, form=form)
 
-# Invoices
 @app.route('/invoices')
 @admin_required
 def invoices():
