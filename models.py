@@ -63,8 +63,7 @@ class RepairJob(db.Model):
     customer = db.relationship('Customer', backref='repair_jobs')
     service = db.relationship('Service', backref='repair_jobs')
     technician = db.relationship('User', backref='assigned_jobs')
-    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), uselist=False)
-
+    
 class Invoice(db.Model):
     __tablename__ = 'invoices'
     id = db.Column(db.Integer, primary_key=True)
@@ -77,7 +76,9 @@ class Invoice(db.Model):
     total = db.Column(db.Numeric(10,2), nullable=False)
     paid = db.Column(db.Boolean, default=False)
     payment_date = db.Column(db.DateTime, nullable=True)
-    repair_job = db.relationship('RepairJob', backref='invoice', uselist=False)
+
+    # This is the correct relationship definition
+    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), uselist=False)
 
 class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
