@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% extends "base.html" %}
 {% block content %}
 <style>
 @media print {
@@ -14,6 +13,7 @@
         top: 0;
         left: 0;
         width: 100%;
+        margin: 0;
         padding: 20px;
     }
     .no-print {
@@ -25,31 +25,68 @@
     }
 }
 </style>
-<!-- rest of your template -->
-{% block content %}
+
 <h2>Repair Job #{{ job.id }}</h2>
+
 <div class="row">
     <div class="col-md-6">
-        <p><strong>Customer:</strong> {{ job.customer.name }}</p>
-        <p><strong>Phone:</strong> {{ job.customer.phone }}</p>
-        <p><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}</p>
-        <p><strong>Issue:</strong> {{ job.issue_description }}</p>
-        <p><strong>Status:</strong> <span class="badge bg-secondary">{{ job.status }}</span></p>
-        <p><strong>Estimated Cost:</strong> UGX {{ job.estimated_cost or 0 }}</p>
-        {% if job.final_cost %}
-        <p><strong>Final Cost:</strong> UGX {{ job.final_cost }}</p>
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">Customer & Device</div>
+            <div class="card-body">
+                <p><strong>{{ job.customer.name }}</strong><br>
+                {{ job.customer.phone }}<br>
+                {{ job.customer.email or '' }}</p>
+                <hr>
+                <p><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}<br>
+                <strong>Issue:</strong> {{ job.issue_description }}<br>
+                <strong>Status:</strong> <span class="badge bg-{% if job.status == 'pending' %}warning{% elif job.status == 'in_progress' %}info{% elif job.status == 'completed' %}success{% else %}secondary{% endif %}">{{ job.status }}</span></p>
+                <p><strong>Estimated Cost:</strong> UGX {{ job.estimated_cost or 0 }}</p>
+                {% if job.final_cost %}
+                <p><strong>Final Cost:</strong> UGX {{ job.final_cost }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-3 no-print">
+            <div class="card-header bg-secondary text-white">Update Job</div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">{{ form.status.label }} {{ form.status(class="form-select") }}</div>
+                    <div class="mb-3">{{ form.final_cost.label }} {{ form.final_cost(class="form-control") }}</div>
+                    <div class="mb-3">{{ form.completion_date.label }} {{ form.completion_date(class="form-control") }}</div>
+                    <div class="mb-3">{{ form.notes.label }} {{ form.notes(class="form-control", rows=3) }}</div>
+                    {{ form.submit(class="btn btn-primary") }}
+                </form>
+            </div>
+        </div>
+
+        {% if job.invoice %}
+        <div class="card print-area">
+            <div class="card-header bg-success text-white">
+                <h3>Invoice #{{ job.invoice.invoice_number }}</h3>
+            </div>
+            <div class="card-body">
+                <p><strong>Customer:</strong> {{ job.customer.name }}</p>
+                <p><strong>Device:</strong> {{ job.device_type }} {{ job.device_model }}</p>
+                <p><strong>Issue:</strong> {{ job.issue_description }}</p>
+                <p><strong>Service Cost:</strong> UGX {{ "{:,.0f}".format(job.invoice.subtotal) }}</p>
+                <p><strong>Tax:</strong> UGX {{ "{:,.0f}".format(job.invoice.tax) }}</p>
+                <p><strong>Total:</strong> UGX {{ "{:,.0f}".format(job.invoice.total) }}</p>
+                <p><strong>Paid:</strong> {% if job.invoice.paid %}✅ Yes on {{ job.invoice.payment_date.strftime('%Y-%m-%d') if job.invoice.payment_date else '' }}{% else %}❌ No{% endif %}</p>
+                {% if not job.invoice.paid %}
+                <form method="POST" action="{{ url_for('mark_invoice_paid', invoice_id=job.invoice.id) }}" class="no-print">
+                    <button class="btn btn-success">Mark as Paid</button>
+                </form>
+                {% endif %}
+                <button class="btn btn-secondary no-print" onclick="window.print();">🖨️ Print Invoice</button>
+            </div>
+        </div>
         {% endif %}
     </div>
-    <div class="col-md-6">
-        <form method="POST">
-            {{ form.hidden_tag() }}
-            <div class="mb-3">{{ form.status.label }} {{ form.status(class="form-select") }}</div>
-            <div class="mb-3">{{ form.final_cost.label }} {{ form.final_cost(class="form-control") }}</div>
-            <div class="mb-3">{{ form.completion_date.label }} {{ form.completion_date(class="form-control") }}</div>
-            <div class="mb-3">{{ form.notes.label }} {{ form.notes(class="form-control") }}</div>
-            {{ form.submit(class="btn btn-primary") }}
-        </form>
-    </div>
 </div>
-<a href="{{ url_for('repair_jobs') }}" class="btn btn-secondary">Back to Jobs</a>
+
+<a href="{{ url_for('repair_jobs') }}" class="btn btn-secondary no-print">Back to Jobs</a>
 {% endblock %}
