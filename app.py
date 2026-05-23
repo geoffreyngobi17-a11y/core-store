@@ -105,7 +105,7 @@ def change_password():
         return redirect(url_for('login'))
     return render_template('change_password.html', form=form)
 
-# Inventory
+# ---------- Inventory ----------
 @app.route('/inventory')
 @login_required
 def inventory():
@@ -190,7 +190,7 @@ def delete_product(id):
     flash('Product deleted.', 'success')
     return redirect(url_for('inventory'))
 
-# Services
+# ---------- Services ----------
 @app.route('/services')
 @login_required
 def services():
@@ -244,7 +244,7 @@ def delete_service(id):
     flash('Service deleted.', 'success')
     return redirect(url_for('services'))
 
-# Employees
+# ---------- Employees ----------
 @app.route('/employees')
 @admin_required
 def employees():
@@ -291,7 +291,7 @@ def delete_employee(id):
     flash('Employee deleted.', 'success')
     return redirect(url_for('employees'))
 
-# Customers
+# ---------- Customers ----------
 @app.route('/customers')
 @login_required
 def customers():
@@ -315,7 +315,7 @@ def add_customer():
         return redirect(url_for('customers'))
     return render_template('customer_form.html', form=form, title='Add Customer')
 
-# Repair Jobs
+# ---------- Repair Jobs ----------
 @app.route('/repair_jobs')
 @login_required
 def repair_jobs():
@@ -401,14 +401,33 @@ def repair_job_detail(id):
             form.completion_date.data = job.completion_date.strftime('%Y-%m-%d')
     return render_template('repair_job_detail.html', job=job, form=form)
 
+# ---------- Invoices (ONLY ONE DEFINITION) ----------
 @app.route('/invoices')
 @admin_required
 def invoices():
-    all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
+    try:
+        all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
+    except Exception:
+        with app.app_context():
+            db.create_all()
+        all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
     return render_template('invoices.html', invoices=all_invoices)
 
+@app.route('/invoices/<int:invoice_id>/pay', methods=['POST'])
+@login_required
+def mark_invoice_paid(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    if current_user.role not in ['admin', 'employee']:
+        abort(403)
+    invoice.paid = True
+    invoice.payment_date = datetime.utcnow()
+    db.session.commit()
+    db.session.add(AuditLog(user_id=current_user.id, action='Mark Invoice Paid', details=f'Invoice {invoice.invoice_number}'))
+    db.session.commit()
+    flash(f'Invoice {invoice.invoice_number} marked as paid.', 'success')
+    return redirect(url_for('repair_job_detail', id=invoice.repair_job_id))
 
-# Sales
+# ---------- Sales ----------
 @app.route('/sales')
 @login_required
 def sales_list():
@@ -469,14 +488,14 @@ def add_sale():
         return redirect(url_for('sales_list'))
     return render_template('sale_form.html', form=form)
 
-# Audit Log
+# ---------- Audit Log ----------
 @app.route('/auditlog')
 @admin_required
 def auditlog():
     logs = AuditLog.query.order_by(desc(AuditLog.timestamp)).all()
     return render_template('auditlog.html', logs=logs)
 
-# Backup
+# ---------- Backup ----------
 @app.route('/admin/backup', methods=['POST'])
 @login_required
 def backup_trigger():
@@ -493,7 +512,7 @@ def backup_trigger():
         app.logger.error(f"Backup error: {e}")
         return "Internal error", 500
 
-# Create tables and admin user
+# ---------- Create tables and admin user ----------
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(role='admin').first():
@@ -508,17 +527,7 @@ with app.app_context():
         db.session.commit()
         print("Admin user created with your chosen password.")
 
-@app.route('/invoices')
-@admin_required
-def invoices():
-    try:
-        all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
-    except Exception:
-        with app.app_context():
-            db.create_all()
-        all_invoices = Invoice.query.order_by(Invoice.issue_date.desc()).all()
-    return render_template('invoices.html', invoices=all_invoices)
-
+# ---------- Run the app ----------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
