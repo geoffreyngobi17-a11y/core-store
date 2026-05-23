@@ -63,6 +63,7 @@ class RepairJob(db.Model):
     customer = db.relationship('Customer', backref='repair_jobs')
     service = db.relationship('Service', backref='repair_jobs')
     technician = db.relationship('User', backref='assigned_jobs')
+    repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), uselist=False)
 
 class Invoice(db.Model):
     __tablename__ = 'invoices'
