@@ -654,13 +654,14 @@ def clear_cart():
     session.pop('cart', None)
     flash('Cart cleared.', 'success')
     return redirect(url_for('view_cart'))
-app.jinja_env.globals.update(enumerate=enumerate)@app.route('/pos')
+app.jinja_env.globals.update(enumerate=enumerate)
+
+@app.route('/pos')
 @login_required
 def pos():
     products = Product.query.all()
     services = Service.query.all()
     return render_template('pos.html', products=products, services=services)
-
 
 # ---------- Run the app ----------
 if __name__ == '__main__':
