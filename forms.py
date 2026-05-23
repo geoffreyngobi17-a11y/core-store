@@ -80,3 +80,13 @@ class SaleForm(FlaskForm):
     customer_name = StringField('Customer Name (optional)', validators=[Optional(), Length(max=100)])
     notes = TextAreaField('Notes', validators=[Optional()])
     submit = SubmitField('Record Sale')
+class ExpenseForm(FlaskForm):
+    date = StringField('Date (YYYY-MM-DD)', validators=[DataRequired()])
+    amount = DecimalField('Amount (UGX)', validators=[DataRequired()], places=2)
+    category = SelectField('Category', choices=[
+        ('Rent', 'Rent'), ('Utilities', 'Utilities'), ('Transport', 'Transport'),
+        ('Supplies', 'Supplies'), ('Salary', 'Salary'), ('Repair Parts', 'Repair Parts'),
+        ('Marketing', 'Marketing'), ('Other', 'Other')
+    ], validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[Optional(), Length(max=500)])
+    submit = SubmitField('Record Expense')
