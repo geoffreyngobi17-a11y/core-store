@@ -610,17 +610,12 @@ def check_database():
         return "<br>".join(messages)
 @app.route('/force-invoices')
 def force_invoices():
-    import sqlalchemy as sa
     from sqlalchemy import text
     with app.app_context():
-        with db.engine.connect() as conn:
+        with db.engine.begin() as conn:
             # Drop the table if it exists (clean slate)
-            try:
-                conn.execute(text("DROP TABLE IF EXISTS invoices CASCADE"))
-                conn.commit()
-            except:
-                pass
-            # Create the table with proper schema
+            conn.execute(text("DROP TABLE IF EXISTS invoices CASCADE"))
+            # Create the table
             conn.execute(text("""
                 CREATE TABLE invoices (
                     id SERIAL PRIMARY KEY,
@@ -635,7 +630,7 @@ def force_invoices():
                     payment_date TIMESTAMP
                 )
             """))
-            # Add foreign key constraint (safe: only if repair_jobs exists)
+            # Add foreign key constraint (only if repair_jobs exists)
             try:
                 conn.execute(text("""
                     ALTER TABLE invoices ADD CONSTRAINT fk_invoices_repair_job
@@ -643,9 +638,7 @@ def force_invoices():
                 """))
             except:
                 pass
-            conn.commit()
-        return "✅ Invoices table recreated successfully. <a href='/invoices'>Go to Invoices</a>"
-
+    return "✅ Invoices table recreated successfully. <a href='/invoices'>Go to Invoices</a>"
 # ---------- Run the app ----------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
