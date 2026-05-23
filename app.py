@@ -1,4 +1,11 @@
 import os
+from flask import session
+
+def get_cart():
+    return session.get('cart', [])
+
+def save_cart(cart):
+    session['cart'] = cart
 import secrets
 from datetime import datetime
 from functools import wraps
@@ -568,6 +575,92 @@ def cleanup_invoices():
         # Reset the ID sequence
         db.engine.execute(text("ALTER SEQUENCE invoices_id_seq RESTART WITH 1"))
     return "All old invoices deleted. Now go to each completed repair job and click 'Generate Invoice'."
+@app.route('/add-to-cart/product/<int:product_id>', methods=['POST'])
+@login_required
+def add_product_to_cart(product_id):
+    product = Product.query.get_or_404(product_id)
+    cart = get_cart()
+    quantity = int(request.form.get('quantity', 1))
+    # Check if item already in cart
+    for item in cart:
+        if item['type'] == 'product' and item['id'] == product_id:
+            item['quantity'] += quantity
+            break
+    else:
+        cart.append({
+            'type': 'product',
+            'id': product_id,
+            'name': product.name,
+            'price': float(product.unit_price),
+            'quantity': quantity
+        })
+    save_cart(cart)
+    flash(f'Added {product.name} to cart.', 'success')
+    return redirect(url_for('view_cart'))
+@app.route('/add-to-cart/service/<int:service_id>', methods=['POST'])
+@login_required
+def add_service_to_cart(service_id):
+    service = Service.query.get_or_404(service_id)
+    cart = get_cart()
+    quantity = int(request.form.get('quantity', 1))
+    for item in cart:
+        if item['type'] == 'service' and item['id'] == service_id:
+            item['quantity'] += quantity
+            break
+    else:
+        cart.append({
+            'type': 'service',
+            'id': service_id,
+            'name': service.name,
+            'price': float(service.price),
+            'quantity': quantity
+        })
+    save_cart(cart)
+    flash(f'Added {service.name} to cart.', 'success')
+    return redirect(url_for('view_cart'))
+@app.route('/cart')
+@login_required
+def view_cart():
+    cart = get_cart()
+    total = sum(item['price'] * item['quantity'] for item in cart)
+    return render_template('cart.html', cart=cart, total=total)
+@app.route('/cart/update', methods=['POST'])
+@login_required
+def update_cart():
+    cart = get_cart()
+    for key, item in enumerate(cart):
+        qty = request.form.get(f'qty_{key}')
+        if qty:
+            item['quantity'] = int(qty)
+        if request.form.get(f'remove_{key}'):
+            cart.pop(key)
+    save_cart([item for item in cart if item['quantity'] > 0])
+    flash('Cart updated.', 'success')
+    return redirect(url_for('view_cart'))
+@app.route('/checkout')
+@login_required
+def checkout():
+    cart = get_cart()
+    if not cart:
+        flash('Cart is empty.', 'warning')
+        return redirect(url_for('view_cart'))
+    total = sum(item['price'] * item['quantity'] for item in cart)
+    # Optional: save transaction to database here (if you want history)
+    # For now, just show printable invoice
+    return render_template('checkout_invoice.html', cart=cart, total=total, sale_date=datetime.utcnow())
+@app.route('/cart/clear')
+@login_required
+def clear_cart():
+    session.pop('cart', None)
+    flash('Cart cleared.', 'success')
+    return redirect(url_for('view_cart'))
+app.jinja_env.globals.update(enumerate=enumerate)@app.route('/pos')
+@login_required
+def pos():
+    products = Product.query.all()
+    services = Service.query.all()
+    return render_template('pos.html', products=products, services=services)
+
 
 # ---------- Run the app ----------
 if __name__ == '__main__':

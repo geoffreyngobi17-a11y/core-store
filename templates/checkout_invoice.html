@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+@media print { .no-print { display: none; } }
+.invoice-header { text-align: center; border-bottom: 2px solid #28a745; margin-bottom: 20px; }
+.invoice-header img { max-height: 80px; }
+.invoice-footer { text-align: center; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background-color: #f2f2f2; }
+.total-row { font-weight: bold; background-color: #f9f9f9; }
+</style>
+<div class="print-area">
+    <div class="invoice-header">
+        <img src="{{ url_for('static', filename='loogo.png') }}" alt="CORE STORE Logo">
+        <h2>CORE ELECTRONICS & COMPUTER CENTRE</h2>
+        <p>Mobile & PC Repair | Electronics Sales</p>
+        <p>Tel: +256756104402 | Email: info@coreelectronics.com</p>
+    </div>
+    <h3>SALE RECEIPT</h3>
+    <p><strong>Date:</strong> {{ sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
+    <p><strong>Sold by:</strong> {{ current_user.name }}</p>
+    <table>
+        <thead>
+            <tr><th>Item</th><th>Type</th><th>Qty</th><th>Unit Price (UGX)</th><th>Total (UGX)</th></tr>
+        </thead>
+        <tbody>
+            {% for item in cart %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.type|capitalize }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ "{:,.0f}".format(item.price) }}</td>
+                <td>{{ "{:,.0f}".format(item.price * item.quantity) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row"><td colspan="4" style="text-align:right"><strong>GRAND TOTAL</strong></td><td><strong>UGX {{ "{:,.0f}".format(total) }}</strong></td></tr>
+        </tbody>
+    </table>
+    <div class="invoice-footer">
+        Thank you for your business!<br>
+        For support, call +256756104402
+    </div>
+</div>
+<div class="no-print mt-3">
+    <button class="btn btn-primary" onclick="window.print();">🖨️ Print Receipt</button>
+    <a href="{{ url_for('clear_cart') }}" class="btn btn-success">Finish & Clear Cart</a>
+    <a href="{{ url_for('view_cart') }}" class="btn btn-secondary">Back to Cart</a>
+</div>
+{% endblock %}
