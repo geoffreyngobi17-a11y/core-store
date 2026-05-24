@@ -788,6 +788,13 @@ def admin_data():
                            sales=sales,
                            invoices=invoices,
                            expenses=expenses)
+@app.route('/reset-db')
+@admin_required
+def reset_db():
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    return "Database reset complete. All tables recreated with CASCADE constraints."
 # ---------- Jinja globals ----------
 app.jinja_env.globals.update(enumerate=enumerate)
 
