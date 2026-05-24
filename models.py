@@ -52,13 +52,13 @@ class Customer(db.Model):
 class RepairJob(db.Model):
     __tablename__ = 'repair_jobs'
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='CASCADE'), nullable=False)
     device_type = db.Column(db.String(50), nullable=False)
     device_model = db.Column(db.String(100))
     issue_description = db.Column(db.Text, nullable=False)
-    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id', ondelete='SET NULL'), nullable=True)
     status = db.Column(db.String(20), default='pending')
-    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     estimated_cost = db.Column(db.Numeric(10,2))
     final_cost = db.Column(db.Numeric(10,2))
     received_date = db.Column(db.DateTime, default=datetime.utcnow)
@@ -68,13 +68,12 @@ class RepairJob(db.Model):
     customer = db.relationship('Customer', backref='repair_jobs')
     service = db.relationship('Service', backref='repair_jobs')
     technician = db.relationship('User', backref='assigned_jobs')
-    # No self‑referential 'repair_job' relationship here – that was the bug
 
 class Invoice(db.Model):
     __tablename__ = 'invoices'
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    repair_job_id = db.Column(db.Integer, db.ForeignKey('repair_jobs.id'), nullable=False, unique=True)
+    repair_job_id = db.Column(db.Integer, db.ForeignKey('repair_jobs.id', ondelete='CASCADE'), nullable=False, unique=True)
     invoice_number = db.Column(db.String(50), unique=True, nullable=False)
     issue_date = db.Column(db.DateTime, default=datetime.utcnow)
     due_date = db.Column(db.DateTime, nullable=True)
@@ -84,7 +83,6 @@ class Invoice(db.Model):
     paid = db.Column(db.Boolean, default=False)
     payment_date = db.Column(db.DateTime, nullable=True)
 
-    # One‑to‑one relationship to RepairJob
     repair_job = db.relationship('RepairJob', backref=db.backref('invoice', uselist=False), foreign_keys=[repair_job_id])
 
 class Sale(db.Model):
@@ -98,7 +96,7 @@ class Sale(db.Model):
     unit_price = db.Column(db.Numeric(10,2), nullable=False)
     total_price = db.Column(db.Numeric(10,2), nullable=False)
     customer_name = db.Column(db.String(100), nullable=True)
-    sold_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    sold_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=False)
     notes = db.Column(db.Text)
 
     seller = db.relationship('User', backref='sales')
@@ -111,7 +109,7 @@ class Expense(db.Model):
     amount = db.Column(db.Numeric(10,2), nullable=False)
     category = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='expenses')
@@ -119,7 +117,7 @@ class Expense(db.Model):
 class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=False)
     action = db.Column(db.String(100), nullable=False)
     details = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
