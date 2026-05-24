@@ -795,40 +795,7 @@ def reset_db():
         db.drop_all()
         db.create_all()
     return "Database reset complete. All tables recreated with CASCADE constraints."
-@app.route('/fix-foreign-keys')
-@admin_required
-def fix_foreign_keys():
-    from sqlalchemy import text
-    with app.app_context():
-        # Fix invoices -> repair_jobs (CASCADE)
-        db.engine.execute(text("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_repair_job_id_fkey"))
-        db.engine.execute(text("ALTER TABLE invoices ADD CONSTRAINT invoices_repair_job_id_fkey FOREIGN KEY (repair_job_id) REFERENCES repair_jobs(id) ON DELETE CASCADE"))
-        
-        # Fix repair_jobs -> customers (CASCADE)
-        db.engine.execute(text("ALTER TABLE repair_jobs DROP CONSTRAINT IF EXISTS repair_jobs_customer_id_fkey"))
-        db.engine.execute(text("ALTER TABLE repair_jobs ADD CONSTRAINT repair_jobs_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE"))
-        
-        # Fix repair_jobs -> services (SET NULL)
-        db.engine.execute(text("ALTER TABLE repair_jobs DROP CONSTRAINT IF EXISTS repair_jobs_service_id_fkey"))
-        db.engine.execute(text("ALTER TABLE repair_jobs ADD CONSTRAINT repair_jobs_service_id_fkey FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE SET NULL"))
-        
-        # Fix repair_jobs -> assigned_to (SET NULL)
-        db.engine.execute(text("ALTER TABLE repair_jobs DROP CONSTRAINT IF EXISTS repair_jobs_assigned_to_fkey"))
-        db.engine.execute(text("ALTER TABLE repair_jobs ADD CONSTRAINT repair_jobs_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL"))
-        
-        # Fix sales -> sold_by (SET NULL)
-        db.engine.execute(text("ALTER TABLE sales DROP CONSTRAINT IF EXISTS sales_sold_by_fkey"))
-        db.engine.execute(text("ALTER TABLE sales ADD CONSTRAINT sales_sold_by_fkey FOREIGN KEY (sold_by) REFERENCES users(id) ON DELETE SET NULL"))
-        
-        # Fix expenses -> recorded_by (SET NULL)
-        db.engine.execute(text("ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_recorded_by_fkey"))
-        db.engine.execute(text("ALTER TABLE expenses ADD CONSTRAINT expenses_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL"))
-        
-        # Fix audit_logs -> user_id (SET NULL)
-        db.engine.execute(text("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey"))
-        db.engine.execute(text("ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL"))
-        
-    return "✅ Foreign key constraints updated. Now deleting customers/repair jobs will work without errors."
+"
 @app.route('/fix-foreign-keys')
 @admin_required
 def fix_foreign_keys():
