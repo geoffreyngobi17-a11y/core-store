@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Data Management</h2>
+<p class="text-danger">⚠️ Deleting records is permanent. Use with caution.</p>
+
+<div class="accordion" id="adminAccordion">
+    <!-- Customers -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingCustomers">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustomers">
+                Customers ({{ customers|length }})
+            </button>
+        </h2>
+        <div id="collapseCustomers" class="accordion-collapse collapse show" data-bs-parent="#adminAccordion">
+            <div class="accordion-body">
+                <table class="table table-sm">
+                    <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for c in customers %}
+                        <tr>
+                            <td>{{ c.id }}</td>
+                            <td>{{ c.name }}</td>
+                            <td>{{ c.phone }}</td>
+                            <td>{{ c.email or '-' }}</td>
+                            <td><a href="{{ url_for('admin_delete_customer', id=c.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete customer {{ c.name }}?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repair Jobs -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingRepairJobs">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRepairJobs">
+                Repair Jobs ({{ repair_jobs|length }})
+            </button>
+        </h2>
+        <div id="collapseRepairJobs" class="accordion-collapse collapse" data-bs-parent="#adminAccordion">
+            <div class="accordion-body">
+                <table class="table table-sm">
+                    <thead><tr><th>ID</th><th>Customer</th><th>Device</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for j in repair_jobs %}
+                        <tr>
+                            <td>{{ j.id }}</td>
+                            <td>{{ j.customer.name }}</td>
+                            <td>{{ j.device_type }} {{ j.device_model }}</td>
+                            <td>{{ j.status }}</td>
+                            <td><a href="{{ url_for('admin_delete_repair_job', id=j.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete repair job #{{ j.id }}?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingSales">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSales">
+                Sales ({{ sales|length }})
+            </button>
+        </h2>
+        <div id="collapseSales" class="accordion-collapse collapse" data-bs-parent="#adminAccordion">
+            <div class="accordion-body">
+                <table class="table table-sm">
+                    <thead><tr><th>ID</th><th>Date</th><th>Item</th><th>Total</th><th>Customer</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for s in sales %}
+                        <tr>
+                            <td>{{ s.id }}</td>
+                            <td>{{ s.sale_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ s.item_name }}</td>
+                            <td>{{ "{:,.0f}".format(s.total_price) }}</td>
+                            <td>{{ s.customer_name or '-' }}</td>
+                            <td><a href="{{ url_for('admin_delete_sale', id=s.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete sale #{{ s.id }}?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoices -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingInvoices">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInvoices">
+                Invoices ({{ invoices|length }})
+            </button>
+        </h2>
+        <div id="collapseInvoices" class="accordion-collapse collapse" data-bs-parent="#adminAccordion">
+            <div class="accordion-body">
+                <table class="table table-sm">
+                    <thead><tr><th>ID</th><th>Invoice #</th><th>Repair Job</th><th>Total</th><th>Paid</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for inv in invoices %}
+                        <tr>
+                            <td>{{ inv.id }}</td>
+                            <td>{{ inv.invoice_number }}</td>
+                            <td>Job #{{ inv.repair_job_id }}</td>
+                            <td>{{ "{:,.0f}".format(inv.total) }}</td>
+                            <td>{% if inv.paid %}Yes{% else %}No{% endif %}</td>
+                            <td><a href="{{ url_for('admin_delete_invoice', id=inv.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete invoice {{ inv.invoice_number }}?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingExpenses">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExpenses">
+                Expenses ({{ expenses|length }})
+            </button>
+        </h2>
+        <div id="collapseExpenses" class="accordion-collapse collapse" data-bs-parent="#adminAccordion">
+            <div class="accordion-body">
+                <table class="table table-sm">
+                    <thead><tr><th>ID</th><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for e in expenses %}
+                        <tr>
+                            <td>{{ e.id }}</td>
+                            <td>{{ e.date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ e.category }}</td>
+                            <td>{{ e.description or '-' }}</td>
+                            <td>{{ "{:,.0f}".format(e.amount) }}</td>
+                            <td><a href="{{ url_for('delete_expense', id=e.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete expense #{{ e.id }}?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

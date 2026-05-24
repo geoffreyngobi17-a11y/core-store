@@ -737,21 +737,57 @@ def generate_invoice(id):
     flash('Invoice generated successfully.', 'success')
     return redirect(url_for('repair_job_detail', id=id))
 
-# ---------- Database and admin creation ----------
-with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(role='admin').first():
-        admin = User(
-            name='Admin',
-            email='admin@coreelectronics.com',
-            phone='+256756104402',
-            role='admin'
-        )
-        admin.set_password('Kaumasophie123')
-        db.session.add(admin)
-        db.session.commit()
-        print("Admin user created with your chosen password.")
+# ---------- Admin Delete Routes (for missing entities) ----------
+@app.route('/admin/delete-customer/<int:id>')
+@admin_required
+def admin_delete_customer(id):
+    customer = Customer.query.get_or_404(id)
+    db.session.delete(customer)
+    db.session.commit()
+    flash('Customer deleted successfully.', 'success')
+    return redirect(url_for('admin_data'))
 
+@app.route('/admin/delete-repair-job/<int:id>')
+@admin_required
+def admin_delete_repair_job(id):
+    job = RepairJob.query.get_or_404(id)
+    db.session.delete(job)
+    db.session.commit()
+    flash('Repair job deleted successfully.', 'success')
+    return redirect(url_for('admin_data'))
+
+@app.route('/admin/delete-sale/<int:id>')
+@admin_required
+def admin_delete_sale(id):
+    sale = Sale.query.get_or_404(id)
+    db.session.delete(sale)
+    db.session.commit()
+    flash('Sale record deleted successfully.', 'success')
+    return redirect(url_for('admin_data'))
+
+@app.route('/admin/delete-invoice/<int:id>')
+@admin_required
+def admin_delete_invoice(id):
+    invoice = Invoice.query.get_or_404(id)
+    # Optionally, also remove the link from repair job?
+    db.session.delete(invoice)
+    db.session.commit()
+    flash('Invoice deleted successfully.', 'success')
+    return redirect(url_for('admin_data'))
+@app.route('/admin-data')
+@admin_required
+def admin_data():
+    customers = Customer.query.all()
+    repair_jobs = RepairJob.query.all()
+    sales = Sale.query.all()
+    invoices = Invoice.query.all()
+    expenses = Expense.query.all()
+    return render_template('admin_data.html',
+                           customers=customers,
+                           repair_jobs=repair_jobs,
+                           sales=sales,
+                           invoices=invoices,
+                           expenses=expenses)
 # ---------- Jinja globals ----------
 app.jinja_env.globals.update(enumerate=enumerate)
 
